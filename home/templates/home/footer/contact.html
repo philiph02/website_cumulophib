@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
     
     <style>
-        /* CSS Styles */
         .legal-page-header-offset { padding-top: 9rem !important; }
         @media screen and (max-width: 968px) { .legal-page-header-offset { padding-top: 7rem !important; } }
         .contact-container { display: grid; grid-template-columns: 1fr 1.5fr; gap: 4rem; margin-top: 2rem; }
@@ -21,15 +20,12 @@
         .insta-card { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; padding: 1.5rem; border-radius: 1rem; text-align: center; margin-top: 2rem; display: block; text-decoration: none; }
         .insta-card:hover { transform: translateY(-5px); }
         .insta-handle { font-size: 1.2rem; font-weight: 600; display: block; margin-top: 0.5rem; }
-        
-        /* Form Styles */
         .contact-form { background-color: var(--container-color); padding: 2.5rem; border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .form-group { margin-bottom: 1.5rem; }
         .form-label { display: block; font-size: var(--small-font-size); margin-bottom: 0.5rem; color: var(--title-color); }
         .form-input { width: 100%; background-color: var(--body-color); border: 1px solid #eee; padding: 1rem; border-radius: 0.5rem; outline: none; color: var(--text-color); }
         .form-input:focus { border-color: var(--first-color); }
         .error-box { background-color: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; border: 1px solid #f87171; }
-
         @media screen and (max-width: 768px) { .contact-container { grid-template-columns: 1fr; } .contact-form { padding: 1.5rem; } }
     </style>
 {% endblock %}
@@ -40,7 +36,6 @@
         <h2 class="section__title" style="font-weight: 400;">Get in Touch</h2>
         
         <div class="contact-container">
-            
             <div class="contact-info">
                 <div class="contact-intro">
                     {% if page.intro %}
@@ -54,31 +49,20 @@
                         </p>
                     {% endif %}
                 </div>
-
                 <div class="info-item">
                     <span class="info-label">Email</span>
-                    <div class="info-value">
-                        <i class='bx bx-envelope'></i>
-                        <a href="mailto:hello@cumulophib.com">hello@cumulophib.com</a>
-                    </div>
+                    <div class="info-value"><i class='bx bx-envelope'></i><a href="mailto:hello@cumulophib.com">hello@cumulophib.com</a></div>
                 </div>
-
                 <div class="info-item">
-                    <span class="info-label">Phone / SMS</span>
-                    <div class="info-value">
-                        <i class='bx bx-phone'></i>
-                        <a href="tel:+436602288024">+43 660 2288024</a>
-                    </div>
+                    <span class="info-label">Phone</span>
+                    <div class="info-value"><i class='bx bx-phone'></i><a href="tel:+436602288024">+43 660 2288024</a></div>
                 </div>
-
                 <a href="https://instagram.com/cumulophib" target="_blank" class="insta-card">
-                    <i class='bx bxl-instagram' style="font-size: 2rem;"></i>
-                    <span class="insta-handle">@cumulophib</span>
-                    <div style="font-size: 0.8rem; opacity: 0.9; margin-top: 0.25rem;">Follow my journey</div>
+                    <i class='bx bxl-instagram' style="font-size: 2rem;"></i><span class="insta-handle">@cumulophib</span>
                 </a>
             </div>
 
-            <form action="" method="POST" class="contact-form swiper-no-swiping">
+            <form action="{% pageurl page %}" method="POST" class="contact-form swiper-no-swiping">
                 {% csrf_token %}
                 
                 {% if form.errors %}
@@ -105,7 +89,6 @@
 
                 <button type="submit" class="button" style="width: 100%;">Send Message</button>
             </form>
-
         </div>
     </section>
 </main>
@@ -114,7 +97,6 @@
 {% block extra_js %}
     {{ block.super }}
     <script>
-    // JS Fallback für Leertasten-Problem
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.contact-form input, .contact-form textarea').forEach(function(el) {
             el.addEventListener('keydown', function(e) { if(e.key === ' ') { e.stopPropagation(); } });

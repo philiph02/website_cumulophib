@@ -39,7 +39,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
 # Login Details
-EMAIL_HOST_USER = 'pheinrich210'   # Your Apple ID Login
+EMAIL_HOST_USER = 'pheinrich210@gmail.com'   # Your Apple ID Login
 EMAIL_HOST_PASSWORD = 'diwa-negn-bnpn-gjft'  # Your App-Specific Password
 DEFAULT_FROM_EMAIL = 'hello@cumulophib.com'  # Sender address
 

@@ -18,7 +18,6 @@ class PrintSizePrice(models.Model):
     size_name = models.CharField(max_length=100)
     base_price = models.DecimalField(decimal_places=2, max_digits=10)
     frame_addon_price = models.DecimalField(decimal_places=2, max_digits=10)
-
     panels = [
         FieldPanel('size_name'),
         FieldRowPanel([FieldPanel('base_price'), FieldPanel('frame_addon_price')])
@@ -26,7 +25,7 @@ class PrintSizePrice(models.Model):
     def __str__(self):
         return f"{self.size_name} ({self.base_price} €)"
 
-# --- 2. STANDARD PAGES ---
+# --- 2. PAGES (Home, Photography, Product) ---
 class HomePage(Page):
     template = "home/index.html"
 
@@ -35,24 +34,11 @@ class PhotographyPage(Page):
 
 class ProductPage(Page):
     template = "home/details.html"
-    
-    product_image = models.ForeignKey(
-        "wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+"
-    )
-    orientation = models.CharField(
-        max_length=20, 
-        choices=[('horizontal', 'Horizontal'), ('vertical', 'Vertical'), ('squared', 'Squared')],
-        default='vertical'
-    )
+    product_image = models.ForeignKey("wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+")
+    orientation = models.CharField(max_length=20, choices=[('horizontal', 'Horizontal'), ('vertical', 'Vertical'), ('squared', 'Squared')], default='vertical')
     description_text = models.TextField(blank=True)
-
-    content_panels = Page.content_panels + [
-        MultiFieldPanel([FieldPanel("product_image"), FieldPanel("orientation")], heading="Product Details"),
-        FieldPanel("description_text"),
-    ]
-
+    content_panels = Page.content_panels + [MultiFieldPanel([FieldPanel("product_image"), FieldPanel("orientation")], heading="Product Details"), FieldPanel("description_text")]
     parent_page_types = ['home.IndexShopPage']
-
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
         context['related_products'] = ProductPage.objects.live().exclude(pk=self.pk).order_by('?')[:3]
@@ -69,28 +55,14 @@ class FeaturedProduct(Orderable):
     slider_description = models.TextField(blank=True)
     image_caption_title = models.CharField(max_length=100, blank=True)
     image_caption_subtitle = models.CharField(max_length=100, blank=True)
-
-    panels = [
-        FieldPanel('product_to_link'),
-        FieldPanel('slider_image'),
-        FieldPanel('slider_title'),
-        FieldPanel('slider_subtitle'),
-        FieldPanel('slider_description'),
-        FieldPanel('image_caption_title'),
-        FieldPanel('image_caption_subtitle'),
-    ]
+    panels = [FieldPanel('product_to_link'), FieldPanel('slider_image'), FieldPanel('slider_title'), FieldPanel('slider_subtitle'), FieldPanel('slider_description'), FieldPanel('image_caption_title'), FieldPanel('image_caption_subtitle')]
 
 class IndexShopPage(Page):
     template = "home/index_shop.html"
-
-    content_panels = Page.content_panels + [
-        MultiFieldPanel([InlinePanel('featured_products', label="Slider Slides")], heading="Slider Content")
-    ]
-
+    content_panels = Page.content_panels + [MultiFieldPanel([InlinePanel('featured_products', label="Slider Slides")], heading="Slider Content")]
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
-        grid_products = ProductPage.objects.child_of(self).live().specific()
-        context['grid_products'] = grid_products
+        context['grid_products'] = ProductPage.objects.child_of(self).live().specific()
         cheapest = PrintSizePrice.objects.all().order_by('base_price').first()
         context['cheapest_price'] = cheapest.base_price if cheapest else 0
         context['registration_page'] = RegistrationPage.objects.live().first()
@@ -103,7 +75,6 @@ class RegistrationPage(Page):
     def serve(self, request, *args, **kwargs):
         from .forms import RegistrationForm
         shop_page = IndexShopPage.objects.live().first()
-        
         if request.method == 'POST':
             form = RegistrationForm(request.POST)
             if form.is_valid():
@@ -115,12 +86,11 @@ class RegistrationPage(Page):
                 messages.error(request, "Please correct the errors below.")
         else:
             form = RegistrationForm()
-        
         context = self.get_context(request)
         context['form'] = form
         return render(request, self.template, context)
 
-# --- 5. CHECKOUT MODELS ---
+# --- 5. CHECKOUT ---
 class Order(models.Model):
     country = models.CharField(max_length=100, default='Austria')
     first_name = models.CharField(max_length=100)
@@ -133,12 +103,8 @@ class Order(models.Model):
     paid = models.BooleanField(default=False)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     stripe_pid = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        ordering = ['-created']
-    
-    def __str__(self):
-        return f'Order {self.id}'
+    class Meta: ordering = ['-created']
+    def __str__(self): return f'Order {self.id}'
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
@@ -147,18 +113,16 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     size_name = models.CharField(max_length=100, blank=True, default='')
     framed = models.BooleanField(default=False)
+    def __str__(self): return f"{self.order.id} - {self.product.title}"
 
-    def __str__(self):
-        return f"{self.order.id} - {self.product.title}"
 
-# --- 6. CONTACT PAGE (MIT CRASH TEST) ---
+# --- 6. CONTACT PAGE (HIER IST DIE MAGIE) ---
 
 class FormField(AbstractFormField):
-    page = models.ForeignKey('ContactPage', on_delete=models.CASCADE, related_name='form_fields')
+    page = ParentalKey('ContactPage', on_delete=models.CASCADE, related_name='form_fields')
 
 class ContactPage(AbstractEmailForm):
-    # ACHTUNG: Ich habe hier deinen Pfad aus dem Upload benutzt.
-    # Wenn das nicht klappt, probier "home/contact_page.html"
+    # Zeigt auf deine Datei im footer Ordner
     template = "home/footer/contact.html"
     
     intro = RichTextField(blank=True)
@@ -176,28 +140,24 @@ class ContactPage(AbstractEmailForm):
     ]
 
     def process_form_submission(self, form):
-        # ---------------------------------------------------------
-        # DER CRASH TEST
-        # Wenn das hier ausgeführt wird, MUSS die Seite abstürzen (500)
-        # ---------------------------------------------------------
-        raise Exception("BOOM! Der Code ist in der Funktion angekommen!")
-
-        # 1. Wagtail Standard
+        # 1. Wagtail speichert die Nachricht in der Datenbank
         submission = super().process_form_submission(form)
 
-        # 2. Mail Code (wird hier nicht erreicht wegen Crash)
+        # 2. Bestätigungs-Mail an den Besucher senden
         try:
             user_email = form.cleaned_data.get('email')
             user_name = form.cleaned_data.get('name', 'Besucher')
+            
             if user_email:
+                print(f"DEBUG: Sende Bestätigung an {user_email}", flush=True)
                 send_mail(
-                    subject="Eingangsbestätigung",
-                    message=f"Hallo {user_name}, danke!",
-                    from_email='pheinrich210@gmail.com',
+                    subject="Eingangsbestätigung: Deine Nachricht an Cumulophib",
+                    message=f"Hallo {user_name},\n\ndanke für deine Nachricht! Ich habe sie erhalten und melde mich so schnell wie möglich bei dir.\n\nBeste Grüße,\nPhilip",
+                    from_email='pheinrich210@gmail.com', # Muss mit settings.py übereinstimmen
                     recipient_list=[user_email],
-                    fail_silently=True
+                    fail_silently=True # Verhindert Error 500 bei Problemen
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"MAIL ERROR: {e}", flush=True)
 
         return submission
