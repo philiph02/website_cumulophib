@@ -1,0 +1,88 @@
+<div class="option-toggle" role="group" aria-label="{{ label|default:'Option state' }}">
+  
+  <label class="opt {% if not value %}is-active{% endif %}">
+    <input type="radio" name="{{ name }}" id="{{ id_off }}" value="false" {% if not value %}checked{% endif %}>
+    <span>{{ label_off|default:"No Frame" }}</span>
+  </label>
+
+  <label class="opt {% if value %}is-active{% endif %}">
+    <input type="radio" name="{{ name }}" id="{{ id_on }}" value="true" {% if value %}checked{% endif %}>
+    <span>{{ label_on|default:"With Frame" }}</span>
+    
+    {% if with_badge %}
+      <div class="shipping-badge">
+          Free Shipping
+      </div>
+    {% endif %}
+  </label>
+
+</div>
+<style>
+/* Dieses CSS ist komponentenspezifisch und bleibt in dieser Datei.
+  Ich habe die Farben an dein Seitenthema angepasst.
+*/
+.option-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem; /* Etwas mehr Abstand */
+  max-width: 100%; /* Passt sich jetzt der vollen Breite an */
+}
+.opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--scroll-bar-color); /* Dein heller Rand */
+  border-radius: .5rem;
+  padding: 1rem;
+  cursor: pointer;
+  background: var(--container-color); /* Weißer Hintergrund */
+  color: var(--text-color); /* Dunkler Text */
+  transition: all 0.2s ease;
+}
+.opt:hover {
+  border-color: var(--text-color);
+}
+.opt.is-active {
+  background: #575757; /* Dein dunkles Button-Grau */
+  color: #fff;
+  border-color: #575757;
+  font-weight: var(--font-medium);
+}
+
+/* HIER IST DIE LÖSUNG FÜR PROBLEM 1:
+   Der 'hässliche Auswahlpunkt' (der echte Radio-Button) wird versteckt.
+*/
+.opt input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+</style>
+
+<script>
+    (function() {
+        // Findet alle Toggles auf der Seite
+        const toggles = document.querySelectorAll('.option-toggle');
+
+        toggles.forEach(toggle => {
+            const inputs = toggle.querySelectorAll('input[type="radio"]');
+            
+            inputs.forEach(input => {
+                // Fügt einen 'change'-Listener zu jedem Radio-Button hinzu
+                input.addEventListener('change', function() {
+                    
+                    // 1. Entfernt 'is-active' von allen labels in dieser Gruppe
+                    const labels = toggle.querySelectorAll('.opt');
+                    labels.forEach(label => label.classList.remove('is-active'));
+                    
+                    // 2. Fügt 'is-active' nur zum übergeordneten Label des geklickten Buttons hinzu
+                    if (this.checked) {
+                        this.parentElement.classList.add('is-active');
+                    }
+                });
+            });
+        });
+    })();
+</script>

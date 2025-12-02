@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
+    <style>
+        /* --- FIX: Header-Abstand --- */
+        .legal-page-header-offset { padding-top: 9rem !important; }
+        @media screen and (max-width: 968px) {
+            .legal-page-header-offset { padding-top: 7rem !important; }
+        }
+
+        .legal-section { margin-bottom: 4rem; }
+        h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1.1rem; font-weight: 400; color: var(--title-color); }
+        p { margin-bottom: 1rem; line-height: 1.6; color: var(--text-color); font-weight: 400; }
+        .label-text { color: var(--title-color); }
+    </style>
+{% endblock %}
+
+{% block content %}
+<main class="main">
+    <section class="section container legal-page-header-offset">
+        <h2 class="section__title" style="font-weight: 400;">Shipping Information</h2>
+
+        <div class="legal-section">
+            <h3>Shipping Costs</h3>
+            <p>We ship worldwide. Shipping costs are calculated flat-rate based on your location:</p>
+            <p>
+                <span class="label-text">Austria:</span> 4.90 € (Free for A2 / Framed)<br>
+                <span class="label-text">EU Countries:</span> 12.90 € (16.90 € for A2 / Framed)<br>
+                <span class="label-text">Europe (Non-EU):</span> 19.90 €<br>
+                <span class="label-text">International (Rest of World):</span> 29.90 €
+            </p>
+
+            <h3>Delivery Times</h3>
+            <p>Your order will usually be processed within 2-5 business days. Delivery times depend on the destination:</p>
+            <p>
+                <span class="label-text">Austria:</span> 2-4 business days<br>
+                <span class="label-text">EU:</span> 3-7 business days<br>
+                <span class="label-text">International:</span> 7-21 business days
+            </p>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'home/assets_shop/js/swiper-bundle.min.js' %}?v=1.0.9"></script>
+    <script src="{% static 'home/assets_shop/js/main.js' %}?v=1.0.9"></script>
+{% endblock %}

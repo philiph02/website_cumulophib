@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
+    
+    <style>
+        /* CSS Styles */
+        .legal-page-header-offset { padding-top: 9rem !important; }
+        @media screen and (max-width: 968px) { .legal-page-header-offset { padding-top: 7rem !important; } }
+        .contact-container { display: grid; grid-template-columns: 1fr 1.5fr; gap: 4rem; margin-top: 2rem; }
+        .contact-intro { font-size: 1.1rem; line-height: 1.6; color: var(--text-color); margin-bottom: 2rem; }
+        .highlight-text { color: var(--title-color); font-weight: 500; }
+        .info-item { margin-bottom: 1.5rem; }
+        .info-label { font-size: var(--small-font-size); color: var(--text-color-light); display: block; }
+        .info-value { font-size: 1.1rem; color: var(--title-color); display: flex; align-items: center; gap: 0.5rem; }
+        .info-value a { color: var(--title-color); transition: .3s; }
+        .info-value a:hover { color: var(--first-color); }
+        .insta-card { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; padding: 1.5rem; border-radius: 1rem; text-align: center; margin-top: 2rem; display: block; text-decoration: none; }
+        .insta-card:hover { transform: translateY(-5px); }
+        .insta-handle { font-size: 1.2rem; font-weight: 600; display: block; margin-top: 0.5rem; }
+        
+        /* Form Styles */
+        .contact-form { background-color: var(--container-color); padding: 2.5rem; border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; font-size: var(--small-font-size); margin-bottom: 0.5rem; color: var(--title-color); }
+        .form-input { width: 100%; background-color: var(--body-color); border: 1px solid #eee; padding: 1rem; border-radius: 0.5rem; outline: none; color: var(--text-color); }
+        .form-input:focus { border-color: var(--first-color); }
+
+        @media screen and (max-width: 768px) { .contact-container { grid-template-columns: 1fr; } .contact-form { padding: 1.5rem; } }
+    </style>
+{% endblock %}
+
+{% block content %}
+<main class="main">
+    <section class="section container legal-page-header-offset">
+        <h2 class="section__title" style="font-weight: 400;">Get in Touch</h2>
+        
+        <div class="contact-container">
+            <div class="contact-info">
+                <div class="contact-intro">
+                    {% if page.intro %}
+                        {{ page.intro|richtext }}
+                    {% else %}
+                        <p style="margin-bottom: 1rem;">Are you interested in <span class="highlight-text">booking me</span>?</p>
+                    {% endif %}
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Email</span>
+                    <div class="info-value"><i class='bx bx-envelope'></i><a href="mailto:hello@cumulophib.com">hello@cumulophib.com</a></div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Phone</span>
+                    <div class="info-value"><i class='bx bx-phone'></i><a href="tel:+436602288024">+43 660 2288024</a></div>
+                </div>
+                <a href="https://instagram.com/cumulophib" target="_blank" class="insta-card">
+                    <i class='bx bxl-instagram' style="font-size: 2rem;"></i><span class="insta-handle">@cumulophib</span>
+                </a>
+            </div>
+
+            <form action="" method="POST" class="contact-form swiper-no-swiping">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="form-input" placeholder="Your Name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-input" placeholder="Your Email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Message</label>
+                    <textarea name="message" class="form-input" rows="5" placeholder="How can I help you?" required></textarea>
+                </div>
+
+                <button type="submit" class="button" style="width: 100%;">Send Message</button>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+    // JS Fallback für Leertasten-Problem
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.contact-form input, .contact-form textarea').forEach(function(el) {
+            el.addEventListener('keydown', function(e) { if(e.key === ' ') { e.stopPropagation(); } });
+        });
+    });
+    </script>
+{% endblock %}

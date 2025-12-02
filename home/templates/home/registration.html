@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static %}
+
+{# 1. Load all the CSS your shop pages use #}
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/swiper-bundle.min.css' %}">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
+    
+    <style>
+        .registration-form p {
+            margin-bottom: var(--mb-1-5);
+        }
+        .registration-form label {
+            display: block;
+            font-size: var(--small-font-size);
+            color: var(--title-color);
+            font-weight: var(--font-medium);
+            margin-bottom: var(--mb-0-5);
+        }
+        .registration-form input[type="text"],
+        .registration-form input[type="email"],
+        .registration-form input[type="password"] {
+            width: 100%;
+            padding: 1.25rem 1.5rem;
+            border: 2px solid var(--scroll-bar-color);
+            border-radius: .5rem;
+            background-color: var(--container-color);
+            color: var(--text-color);
+            outline: none;
+            transition: border-color .3s;
+        }
+        .registration-form input[type="text"]:focus,
+        .registration-form input[type="email"]:focus,
+        .registration-form input[type="password"]:focus {
+            border-color: var(--title-color);
+        }
+        .registration-form .helptext {
+            font-size: var(--small-font-size);
+            color: var(--text-color-light);
+            margin-top: var(--mb-0-25);
+            margin-left: 0.5rem;
+            display: block; /* Make help text display correctly */
+        }
+        /* Hide default Django help text for password */
+        .registration-form #id_password2 + .helptext {
+            display: none;
+        }
+        .registration-form ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .registration-form .errorlist {
+            color: hsl(0, 80%, 60%); /* Red */
+            font-weight: var(--font-medium);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<main class="main">
+    <section class="section container">
+        <h2 class="section__title" style="margin-bottom: 2rem;">Create an Account</h2>
+
+        <div style="max-width: 600px; margin: 0 auto; background: var(--container-color); padding: 2rem; border-radius: .5rem;">
+            
+            <form action="." method="post" class="registration-form">
+                {% csrf_token %}
+                
+                {{ form.as_p }}
+                
+                <p style="margin-top: 2rem;">
+                    <button type="submit" class="button">Register</button>
+                </p>
+            </form>
+
+{% comment %}
+            <p style="margin-top: 2rem; text-align: center;">
+                Already have an account? 
+                <a href="#" id="go-to-login" style="color: var(--title-color); font-weight: var(--font-medium);">Log in here</a>
+            </p>
+            {% endcomment %}
+        </div>
+        
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }} {# Inherits scripts from base.html #}
+    
+    <script src="{% static 'home/assets_shop/js/main.js' %}?v=1.0.9"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find the "Log in here" link
+            const loginLink = document.getElementById('go-to-login');
+            
+            // Find the login popup and the login button from main.js
+            const loginPopup = document.getElementById('login');
+            
+            if (loginLink && loginPopup) {
+                loginLink.addEventListener('click', function(e) {
+                    e.preventDefault(); // Stop the link from jumping
+                    
+                    // Manually trigger the login popup
+                    // This re-uses the logic already in your main.js
+                    loginPopup.classList.add('show-login');
+                });
+            }
+        });
+    </script>
+{% endblock %}
