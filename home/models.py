@@ -27,7 +27,7 @@ class PrintSizePrice(models.Model):
 
 # --- 2. PAGES (Home, Photography, Product) ---
 class HomePage(Page):
-    template = "home/index.html"
+    template = "home/about.html"
 
 class PhotographyPage(Page):
     template = "home/photography.html"

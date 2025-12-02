@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 
-from .models import ProductPage, Order, OrderItem, PrintSizePrice
+from .models import ProductPage, Order, OrderItem, PrintSizePrice, HomePage, IndexShopPage, PhotographyPage
 from django.core.mail import send_mail
 
 # --- Helper: Country Lists ---
@@ -59,13 +59,16 @@ def index_shop_view(request):
         'page': shop_page,
         'grid_products': products,
         'cheapest_price': cheapest_price,
+        'featured_slider_items': shop_page.featured_products.all() if shop_page else [],
     }
     return render(request, 'home/index_shop.html', context)
 
 def home_view(request):
     # Holt die "About Me" Seite
     about_page = HomePage.objects.live().first()
-    return render(request, 'home/index.html', {'page': about_page})
+    # HIER: Pfad zu deiner neuen about.html (oder footer/about.html, je nachdem wo sie liegt)
+    # Ich nehme an, sie liegt direkt in home/templates/home/about.html
+    return render(request, 'home/about.html', {'page': about_page})
 
 def photography_view(request):
     # Holt die Photography Seite
