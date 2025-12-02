@@ -10,6 +10,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 
 from .models import ProductPage, Order, OrderItem, PrintSizePrice
+from django.core.mail import send_mail
 
 # --- Helper: Country Lists ---
 def get_eu_countries():
@@ -231,36 +232,64 @@ def returns_view(request):
     return render(request, 'home/footer/returns.html')
 
 def contact_view(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         name = request.POST.get('name')
         email = request.POST.get('email')
         message = request.POST.get('message')
 
-        # 1. Send Email to You (Admin)
+        # --- KONFIGURATION ---
+        # Hier legen wir den schönen Absender-Namen fest
+        sender_name = "Cumulophib"
+        sender_email = settings.DEFAULT_FROM_EMAIL # pheinrich210@gmail.com
+        
+        # So sieht der Absender im Postfach aus: "Cumulophib Photography <pheinrich210@gmail.com>"
+        full_sender = f"{sender_name} <{sender_email}>"
+
         try:
+            # 1. E-Mail an DICH (Admin)
             send_mail(
-                subject=f"New Contact from {name}",
-                message=f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}",
-                from_email=settings.DEFAULT_FROM_EMAIL, # Sends from pheinrich210@gmail.com
-                recipient_list=['hello@cumulophib.com'], # Goes to your new inbox
+                subject=f"New Contact: {name}",
+                message=f"New message received via website.\n\nName: {name}\nEmail: {email}\n\nMessage:\n{message}",
+                from_email=full_sender,
+                recipient_list=['hello@cumulophib.com'],
                 fail_silently=False,
             )
             
-            # 2. Send Confirmation to Visitor
+            # 2. Professionelle Bestätigung an den BESUCHER
+            visitor_subject = "We received your message | Cumulophib"
+            
+            visitor_message = f"""Hi {name},
+
+Thank you for reaching out to Cumulophib! 
+
+I have received your message and will get back to you as soon as possible.
+
+In the meantime, feel free to browse my latest work on my website or Instagram.
+
+--------------------------------------------------
+Philip Heinrich
+Cumulophib 
+Website: https://www.cumulophib.com
+Instagram: @cumulophib
+Email: hello@cumulophib.com
+--------------------------------------------------
+(This is an automated confirmation. Please do not reply to this specific email.)
+"""
+
             send_mail(
-                subject="Confirmation: We received your message",
-                message=f"Hi {name},\n\nThanks for reaching out! I'll get back to you soon.\n\nBest,\nPhilip",
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                subject=visitor_subject,
+                message=visitor_message,
+                from_email=full_sender,
                 recipient_list=[email],
                 fail_silently=True,
             )
             
             messages.success(request, "Message sent successfully!")
-            return redirect('contact') # Redirects back to clean form
-            
+            return redirect('contact')
+
         except Exception as e:
-            print(f"EMAIL ERROR: {e}", flush=True) # Check server log if it fails
-            messages.error(request, "Something went wrong. Please try again.")
+            print(f"EMAIL ERROR: {e}")
+            messages.error(request, f"Error sending message: {str(e)}")
 
     return render(request, 'home/footer/contact.html')
 

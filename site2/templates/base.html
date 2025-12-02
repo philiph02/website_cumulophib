@@ -159,6 +159,11 @@
                         {% if about_page %}
                             <li class="nav__item"><a href="{% pageurl about_page %}" class="nav__link {% if page.url == about_page.url %}active-link{% endif %}">About Me</a></li>
                         {% endif %}
+
+                        <li class="nav__item">
+                            <a href="/contact/" class="nav__link {% if request.path == '/contact/' %}active-link{% endif %}">Contact</a>
+                        </li>
+                        
                     </ul>
                     <div class="nav__close" id="nav-close"><i class="bx bx-x"></i></div>
                 </div>
