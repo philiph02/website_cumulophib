@@ -1,18 +1,13 @@
 from decimal import Decimal, InvalidOperation
 from .models import ProductPage, HomePage, PhotographyPage, IndexShopPage 
 
-def global_pages(request):
-    """
-    Stellt sicher, dass die Links für Shop, Photography und About Me
-    auf JEDER Seite verfügbar sind (auch auf manuellen Django-Views wie Contact).
-    """
+# HIER: Der Name ist wieder "global_nav_links", damit es zu deinen Settings passt!
+def global_nav_links(request):
     try:
-        # Wir holen die erste Live-Seite jedes Typs
         about_page = HomePage.objects.live().first()
         photography_page = PhotographyPage.objects.live().first()
         index_shop_page = IndexShopPage.objects.live().first()
     except Exception:
-        # Fallback, falls Datenbank noch leer ist
         about_page = None
         photography_page = None
         index_shop_page = None
@@ -20,33 +15,31 @@ def global_pages(request):
     return {
         'about_page': about_page,
         'photography_page': photography_page,
-        # WICHTIG: Der Key muss 'shop_page' heißen, damit er zur base.html passt
         'shop_page': index_shop_page,
     }
 
 def cart_context(request):
-    """
-    Berechnet den Warenkorb-Inhalt (Anzahl & Preis) für den Header auf allen Seiten.
-    Verhindert Abstürze bei alten/kaputten Session-Daten.
-    """
     cart_session = request.session.get('cart', {})
-    
     total_price = Decimal(0)
     total_quantity = 0
     cart_items = []
     
-    # 1. Filtere nur gültige Einträge (Schutz gegen 'int object is not subscriptable')
     valid_cart_items = {}
     for key, item in cart_session.items():
         if isinstance(item, dict) and 'product_id' in item and 'price' in item:
             valid_cart_items[key] = item
     
-    # 2. Hole alle Produkte aus der Datenbank (optimiert: nur 1 Abfrage)
+    if not valid_cart_items:
+         return {
+            'cart_items': [],
+            'cart_total_price': Decimal(0),
+            'cart_total_count': 0, 
+        }
+
     product_ids = [item['product_id'] for item in valid_cart_items.values()]
     products = ProductPage.objects.filter(id__in=product_ids).specific()
     product_map = {str(p.id): p for p in products}
 
-    # 3. Berechne Summen
     for cart_key, item_details in valid_cart_items.items():
         try:
             price_per_item = Decimal(item_details['price'])
@@ -69,7 +62,6 @@ def cart_context(request):
                 })
 
         except (InvalidOperation, TypeError, KeyError, ValueError):
-            # Ignoriere kaputte Items statt abzustürzen
             continue
 
     return {
