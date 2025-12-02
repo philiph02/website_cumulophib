@@ -28,6 +28,7 @@
         .form-label { display: block; font-size: var(--small-font-size); margin-bottom: 0.5rem; color: var(--title-color); }
         .form-input { width: 100%; background-color: var(--body-color); border: 1px solid #eee; padding: 1rem; border-radius: 0.5rem; outline: none; color: var(--text-color); }
         .form-input:focus { border-color: var(--first-color); }
+        .error-box { background-color: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; border: 1px solid #f87171; }
 
         @media screen and (max-width: 768px) { .contact-container { grid-template-columns: 1fr; } .contact-form { padding: 1.5rem; } }
     </style>
@@ -39,29 +40,53 @@
         <h2 class="section__title" style="font-weight: 400;">Get in Touch</h2>
         
         <div class="contact-container">
+            
             <div class="contact-info">
                 <div class="contact-intro">
                     {% if page.intro %}
                         {{ page.intro|richtext }}
                     {% else %}
-                        <p style="margin-bottom: 1rem;">Are you interested in <span class="highlight-text">booking me</span>?</p>
+                        <p style="margin-bottom: 1rem;">
+                            Are you interested in <span class="highlight-text">booking me for an event</span>, or would you like to receive a non-binding offer?
+                        </p>
+                        <p>
+                            Also, if you have any questions regarding my <span class="highlight-text">Fine Art Prints</span> or are experiencing technical issues with the shop, please don't hesitate to contact me.
+                        </p>
                     {% endif %}
                 </div>
+
                 <div class="info-item">
                     <span class="info-label">Email</span>
-                    <div class="info-value"><i class='bx bx-envelope'></i><a href="mailto:hello@cumulophib.com">hello@cumulophib.com</a></div>
+                    <div class="info-value">
+                        <i class='bx bx-envelope'></i>
+                        <a href="mailto:hello@cumulophib.com">hello@cumulophib.com</a>
+                    </div>
                 </div>
+
                 <div class="info-item">
-                    <span class="info-label">Phone</span>
-                    <div class="info-value"><i class='bx bx-phone'></i><a href="tel:+436602288024">+43 660 2288024</a></div>
+                    <span class="info-label">Phone / SMS</span>
+                    <div class="info-value">
+                        <i class='bx bx-phone'></i>
+                        <a href="tel:+436602288024">+43 660 2288024</a>
+                    </div>
                 </div>
+
                 <a href="https://instagram.com/cumulophib" target="_blank" class="insta-card">
-                    <i class='bx bxl-instagram' style="font-size: 2rem;"></i><span class="insta-handle">@cumulophib</span>
+                    <i class='bx bxl-instagram' style="font-size: 2rem;"></i>
+                    <span class="insta-handle">@cumulophib</span>
+                    <div style="font-size: 0.8rem; opacity: 0.9; margin-top: 0.25rem;">Follow my journey</div>
                 </a>
             </div>
 
             <form action="" method="POST" class="contact-form swiper-no-swiping">
                 {% csrf_token %}
+                
+                {% if form.errors %}
+                    <div class="error-box">
+                        <strong>Please fix the errors below:</strong>
+                        {{ form.errors }}
+                    </div>
+                {% endif %}
                 
                 <div class="form-group">
                     <label class="form-label">Name</label>
@@ -80,6 +105,7 @@
 
                 <button type="submit" class="button" style="width: 100%;">Send Message</button>
             </form>
+
         </div>
     </section>
 </main>

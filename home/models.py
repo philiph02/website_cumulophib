@@ -9,9 +9,8 @@ from wagtail.fields import RichTextField
 from wagtail.snippets.models import register_snippet
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, InlinePanel, FieldRowPanel
 from modelcluster.fields import ParentalKey
-from wagtail.search import index
-
-
+from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
+from django.core.mail import send_mail
 
 # --- 1. PRICING SNIPPET ---
 @register_snippet
@@ -27,7 +26,7 @@ class PrintSizePrice(models.Model):
     def __str__(self):
         return f"{self.size_name} ({self.base_price} €)"
 
-# --- 2. PAGES ---
+# --- 2. STANDARD PAGES ---
 class HomePage(Page):
     template = "home/index.html"
 
@@ -56,12 +55,11 @@ class ProductPage(Page):
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
-        # Random related products
         context['related_products'] = ProductPage.objects.live().exclude(pk=self.pk).order_by('?')[:3]
         context['all_variants'] = PrintSizePrice.objects.all().order_by('base_price')
         return context
 
-# --- 3. SHOP INDEX (THE GRID LOGIC) ---
+# --- 3. SHOP INDEX ---
 class FeaturedProduct(Orderable):
     page = ParentalKey('home.IndexShopPage', related_name='featured_products')
     product_to_link = models.ForeignKey('home.ProductPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
@@ -91,16 +89,10 @@ class IndexShopPage(Page):
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
-        
-        # --- GRID LOGIC: Fetch items in Admin Sort Order ---
-        # This allows you to drag-and-drop items in Wagtail to rearrange them
         grid_products = ProductPage.objects.child_of(self).live().specific()
         context['grid_products'] = grid_products
-
-        # Price Logic
         cheapest = PrintSizePrice.objects.all().order_by('base_price').first()
         context['cheapest_price'] = cheapest.base_price if cheapest else 0
-        
         context['registration_page'] = RegistrationPage.objects.live().first()
         context['featured_slider_items'] = self.featured_products.all()
         return context
@@ -128,9 +120,7 @@ class RegistrationPage(Page):
         context['form'] = form
         return render(request, self.template, context)
 
-
-# --- 5. CHECKOUT MODELS (REQUIRED FOR VIEWS.PY) ---
-
+# --- 5. CHECKOUT MODELS ---
 class Order(models.Model):
     country = models.CharField(max_length=100, default='Austria')
     first_name = models.CharField(max_length=100)
@@ -160,26 +150,23 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.order.id} - {self.product.title}"
-    
 
-from django.db import models
-from wagtail.models import Page
-from wagtail.fields import RichTextField
-from wagtail.admin.panels import FieldPanel, MultiFieldPanel, InlinePanel
-from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
-from django.core.mail import send_mail  # Wichtig!
+# --- 6. CONTACT PAGE (MIT CRASH TEST) ---
 
 class FormField(AbstractFormField):
     page = models.ForeignKey('ContactPage', on_delete=models.CASCADE, related_name='form_fields')
-# Die Kontaktseite
+
 class ContactPage(AbstractEmailForm):
-    template = "home/contact_page.html"
+    # ACHTUNG: Ich habe hier deinen Pfad aus dem Upload benutzt.
+    # Wenn das nicht klappt, probier "home/contact_page.html"
+    template = "home/footer/contact.html"
+    
     intro = RichTextField(blank=True)
     thank_you_text = RichTextField(blank=True)
 
     content_panels = AbstractEmailForm.content_panels + [
         FieldPanel('intro'),
-        InlinePanel('form_fields', label="Form fields"), # Hier definierst du Name/Email/Message im Admin
+        InlinePanel('form_fields', label="Form fields"),
         FieldPanel('thank_you_text'),
         MultiFieldPanel([
             FieldPanel('from_address'),
@@ -189,25 +176,28 @@ class ContactPage(AbstractEmailForm):
     ]
 
     def process_form_submission(self, form):
-        raise Exception("BOOM! PHILIP, WAGTAIL BENUTZT TATSÄCHLICH DIESEN CODE!")
-        # 1. Wagtail Standard: Speichert in DB & Mail an Admin (Dich)
+        # ---------------------------------------------------------
+        # DER CRASH TEST
+        # Wenn das hier ausgeführt wird, MUSS die Seite abstürzen (500)
+        # ---------------------------------------------------------
+        raise Exception("BOOM! Der Code ist in der Funktion angekommen!")
+
+        # 1. Wagtail Standard
         submission = super().process_form_submission(form)
 
-        # 2. Bestätigungs-Mail an den Besucher (User)
+        # 2. Mail Code (wird hier nicht erreicht wegen Crash)
         try:
             user_email = form.cleaned_data.get('email')
             user_name = form.cleaned_data.get('name', 'Besucher')
-            
             if user_email:
-                print(f"DEBUG: Sende Bestätigung an {user_email}", flush=True)
                 send_mail(
-                    subject="Eingangsbestätigung: Deine Nachricht an Cumulophib",
-                    message=f"Hallo {user_name},\n\ndanke für deine Nachricht! Ich habe sie erhalten und melde mich so schnell wie möglich bei dir.\n\nBeste Grüße,\nPhilip",
+                    subject="Eingangsbestätigung",
+                    message=f"Hallo {user_name}, danke!",
                     from_email='pheinrich210@gmail.com',
                     recipient_list=[user_email],
-                    fail_silently=True # Verhindert Absturz (Error 500)
+                    fail_silently=True
                 )
-        except Exception as e:
-            print(f"MAIL ERROR: {e}", flush=True)
+        except Exception:
+            pass
 
         return submission
