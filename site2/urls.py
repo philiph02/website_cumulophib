@@ -29,7 +29,7 @@ urlpatterns = [
     # --- FOOTER PAGES (NEW) ---
     path("shipping-information/", home_views.shipping_info_view, name="shipping_information"),
     path("returns/", home_views.returns_view, name="returns"),
-    #path("contact/", home_views.contact_view, name="contact"),
+    path("contact/", home_views.contact_view, name="contact"),
     path("imprint/", home_views.imprint_view, name="imprint"),
     path("privacy-policy/", home_views.privacy_view, name="privacy"),
     path("terms-conditions/", home_views.terms_view, name="terms"),

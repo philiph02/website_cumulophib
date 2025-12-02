@@ -231,6 +231,37 @@ def returns_view(request):
     return render(request, 'home/footer/returns.html')
 
 def contact_view(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        message = request.POST.get('message')
+
+        # 1. Send Email to You (Admin)
+        try:
+            send_mail(
+                subject=f"New Contact from {name}",
+                message=f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}",
+                from_email=settings.DEFAULT_FROM_EMAIL, # Sends from pheinrich210@gmail.com
+                recipient_list=['hello@cumulophib.com'], # Goes to your new inbox
+                fail_silently=False,
+            )
+            
+            # 2. Send Confirmation to Visitor
+            send_mail(
+                subject="Confirmation: We received your message",
+                message=f"Hi {name},\n\nThanks for reaching out! I'll get back to you soon.\n\nBest,\nPhilip",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=True,
+            )
+            
+            messages.success(request, "Message sent successfully!")
+            return redirect('contact') # Redirects back to clean form
+            
+        except Exception as e:
+            print(f"EMAIL ERROR: {e}", flush=True) # Check server log if it fails
+            messages.error(request, "Something went wrong. Please try again.")
+
     return render(request, 'home/footer/contact.html')
 
 def imprint_view(request):

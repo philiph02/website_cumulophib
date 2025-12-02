@@ -34,3 +34,6 @@ OS and IDE generated files
 Docker (Optional - exclude if you don't want logs/build context)
 
 *.log
+
+dev.py
+production.py

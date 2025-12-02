@@ -1,163 +1,95 @@
-from django.db import models
-from django.shortcuts import render, redirect
-from django.contrib.auth import login
-from django.contrib import messages
-from django.contrib.auth.models import User
+{% extends "base.html" %}
+{% load static %}
 
-from wagtail.models import Page, Orderable
-from wagtail.fields import RichTextField
-from wagtail.snippets.models import register_snippet
-from wagtail.admin.panels import FieldPanel, MultiFieldPanel, InlinePanel, FieldRowPanel
-from modelcluster.fields import ParentalKey
-from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
-from django.core.mail import send_mail
-
-# --- 1. PRICING SNIPPET ---
-@register_snippet
-class PrintSizePrice(models.Model):
-    size_name = models.CharField(max_length=100)
-    base_price = models.DecimalField(decimal_places=2, max_digits=10)
-    frame_addon_price = models.DecimalField(decimal_places=2, max_digits=10)
-    panels = [
-        FieldPanel('size_name'),
-        FieldRowPanel([FieldPanel('base_price'), FieldPanel('frame_addon_price')])
-    ]
-    def __str__(self):
-        return f"{self.size_name} ({self.base_price} €)"
-
-# --- 2. PAGES (Home, Photography, Product) ---
-class HomePage(Page):
-    template = "home/index.html"
-
-class PhotographyPage(Page):
-    template = "home/photography.html"
-
-class ProductPage(Page):
-    template = "home/details.html"
-    product_image = models.ForeignKey("wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+")
-    orientation = models.CharField(max_length=20, choices=[('horizontal', 'Horizontal'), ('vertical', 'Vertical'), ('squared', 'Squared')], default='vertical')
-    description_text = models.TextField(blank=True)
-    content_panels = Page.content_panels + [MultiFieldPanel([FieldPanel("product_image"), FieldPanel("orientation")], heading="Product Details"), FieldPanel("description_text")]
-    parent_page_types = ['home.IndexShopPage']
-    def get_context(self, request, *args, **kwargs):
-        context = super().get_context(request, *args, **kwargs)
-        context['related_products'] = ProductPage.objects.live().exclude(pk=self.pk).order_by('?')[:3]
-        context['all_variants'] = PrintSizePrice.objects.all().order_by('base_price')
-        return context
-
-# --- 3. SHOP INDEX ---
-class FeaturedProduct(Orderable):
-    page = ParentalKey('home.IndexShopPage', related_name='featured_products')
-    product_to_link = models.ForeignKey('home.ProductPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
-    slider_image = models.ForeignKey("wagtailimages.Image", null=True, on_delete=models.SET_NULL, related_name="+")
-    slider_title = RichTextField()
-    slider_subtitle = models.CharField(max_length=255, blank=True)
-    slider_description = models.TextField(blank=True)
-    image_caption_title = models.CharField(max_length=100, blank=True)
-    image_caption_subtitle = models.CharField(max_length=100, blank=True)
-    panels = [FieldPanel('product_to_link'), FieldPanel('slider_image'), FieldPanel('slider_title'), FieldPanel('slider_subtitle'), FieldPanel('slider_description'), FieldPanel('image_caption_title'), FieldPanel('image_caption_subtitle')]
-
-class IndexShopPage(Page):
-    template = "home/index_shop.html"
-    content_panels = Page.content_panels + [MultiFieldPanel([InlinePanel('featured_products', label="Slider Slides")], heading="Slider Content")]
-    def get_context(self, request, *args, **kwargs):
-        context = super().get_context(request, *args, **kwargs)
-        context['grid_products'] = ProductPage.objects.child_of(self).live().specific()
-        cheapest = PrintSizePrice.objects.all().order_by('base_price').first()
-        context['cheapest_price'] = cheapest.base_price if cheapest else 0
-        context['registration_page'] = RegistrationPage.objects.live().first()
-        context['featured_slider_items'] = self.featured_products.all()
-        return context
-
-# --- 4. REGISTRATION ---
-class RegistrationPage(Page):
-    template = "home/registration.html"
-    def serve(self, request, *args, **kwargs):
-        from .forms import RegistrationForm
-        shop_page = IndexShopPage.objects.live().first()
-        if request.method == 'POST':
-            form = RegistrationForm(request.POST)
-            if form.is_valid():
-                user = form.save()
-                login(request, user)
-                messages.success(request, f"Welcome, {user.username}!")
-                return redirect(shop_page.url if shop_page else '/')
-            else:
-                messages.error(request, "Please correct the errors below.")
-        else:
-            form = RegistrationForm()
-        context = self.get_context(request)
-        context['form'] = form
-        return render(request, self.template, context)
-
-# --- 5. CHECKOUT ---
-class Order(models.Model):
-    country = models.CharField(max_length=100, default='Austria')
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    email = models.EmailField()
-    address = models.CharField(max_length=250)
-    postal_code = models.CharField(max_length=20)
-    city = models.CharField(max_length=100)
-    created = models.DateTimeField(auto_now_add=True)
-    paid = models.BooleanField(default=False)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    stripe_pid = models.CharField(max_length=255, blank=True, null=True)
-    class Meta: ordering = ['-created']
-    def __str__(self): return f'Order {self.id}'
-
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey(ProductPage, related_name='order_items', on_delete=models.CASCADE) 
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.PositiveIntegerField(default=1)
-    size_name = models.CharField(max_length=100, blank=True, default='')
-    framed = models.BooleanField(default=False)
-    def __str__(self): return f"{self.order.id} - {self.product.title}"
-
-
-# --- 6. CONTACT PAGE (HIER IST DIE MAGIE) ---
-
-class FormField(AbstractFormField):
-    page = ParentalKey('ContactPage', on_delete=models.CASCADE, related_name='form_fields')
-
-class ContactPage(AbstractEmailForm):
-    # Zeigt auf deine Datei im footer Ordner
-    template = "home/footer/contact.html"
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
     
-    intro = RichTextField(blank=True)
-    thank_you_text = RichTextField(blank=True)
+    <style>
+        .legal-page-header-offset { padding-top: 9rem !important; }
+        @media screen and (max-width: 968px) { .legal-page-header-offset { padding-top: 7rem !important; } }
+        .contact-container { display: grid; grid-template-columns: 1fr 1.5fr; gap: 4rem; margin-top: 2rem; }
+        .contact-intro { font-size: 1.1rem; line-height: 1.6; color: var(--text-color); margin-bottom: 2rem; }
+        .highlight-text { color: var(--title-color); font-weight: 500; }
+        .info-item { margin-bottom: 1.5rem; }
+        .info-label { font-size: var(--small-font-size); color: var(--text-color-light); display: block; }
+        .info-value { font-size: 1.1rem; color: var(--title-color); display: flex; align-items: center; gap: 0.5rem; }
+        .info-value a { color: var(--title-color); transition: .3s; }
+        .info-value a:hover { color: var(--first-color); }
+        .insta-card { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; padding: 1.5rem; border-radius: 1rem; text-align: center; margin-top: 2rem; display: block; text-decoration: none; }
+        .insta-card:hover { transform: translateY(-5px); }
+        .insta-handle { font-size: 1.2rem; font-weight: 600; display: block; margin-top: 0.5rem; }
+        .contact-form { background-color: var(--container-color); padding: 2.5rem; border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; font-size: var(--small-font-size); margin-bottom: 0.5rem; color: var(--title-color); }
+        .form-input { width: 100%; background-color: var(--body-color); border: 1px solid #eee; padding: 1rem; border-radius: 0.5rem; outline: none; color: var(--text-color); }
+        .form-input:focus { border-color: var(--first-color); }
+        .error-box { background-color: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; border: 1px solid #f87171; }
+        @media screen and (max-width: 768px) { .contact-container { grid-template-columns: 1fr; } .contact-form { padding: 1.5rem; } }
+    </style>
+{% endblock %}
 
-    content_panels = AbstractEmailForm.content_panels + [
-        FieldPanel('intro'),
-        InlinePanel('form_fields', label="Form fields"),
-        FieldPanel('thank_you_text'),
-        MultiFieldPanel([
-            FieldPanel('from_address'),
-            FieldPanel('to_address'),
-            FieldPanel('subject'),
-        ], "Email Settings"),
-    ]
+{% block content %}
+<main class="main">
+    <section class="section container legal-page-header-offset">
+        <h2 class="section__title" style="font-weight: 400;">Get in Touch</h2>
+        
+        <div class="contact-container">
+            <div class="contact-info">
+                <div class="contact-intro">
+                    <p style="margin-bottom: 1rem;">
+                        Are you interested in <span class="highlight-text">booking me for an event</span>, or would you like to receive a non-binding offer?
+                    </p>
+                    <p>
+                        Also, if you have any questions regarding my <span class="highlight-text">Fine Art Prints</span> or are experiencing technical issues with the shop, please don't hesitate to contact me.
+                    </p>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Email</span>
+                    <div class="info-value"><i class='bx bx-envelope'></i><a href="mailto:hello@cumulophib.com">hello@cumulophib.com</a></div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Phone</span>
+                    <div class="info-value"><i class='bx bx-phone'></i><a href="tel:+436602288024">+43 660 2288024</a></div>
+                </div>
+                <a href="https://instagram.com/cumulophib" target="_blank" class="insta-card">
+                    <i class='bx bxl-instagram' style="font-size: 2rem;"></i><span class="insta-handle">@cumulophib</span>
+                </a>
+            </div>
 
-    def process_form_submission(self, form):
-        # 1. Wagtail speichert die Nachricht in der Datenbank
-        submission = super().process_form_submission(form)
+            <form action="" method="POST" class="contact-form swiper-no-swiping">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="form-input" placeholder="Your Name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-input" placeholder="Your Email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Message</label>
+                    <textarea name="message" class="form-input" rows="5" placeholder="How can I help you?" required></textarea>
+                </div>
 
-        # 2. Bestätigungs-Mail an den Besucher senden
-        try:
-            user_email = form.cleaned_data.get('email')
-            user_name = form.cleaned_data.get('name', 'Besucher')
-            
-            if user_email:
-                print(f"DEBUG: Sende Bestätigung an {user_email}", flush=True)
-                send_mail(
-                    subject="Eingangsbestätigung: Deine Nachricht an Cumulophib",
-                    message=f"Hallo {user_name},\n\ndanke für deine Nachricht! Ich habe sie erhalten und melde mich so schnell wie möglich bei dir.\n\nBeste Grüße,\nPhilip",
-                    from_email='pheinrich210@gmail.com', # Muss mit settings.py übereinstimmen
-                    recipient_list=[user_email],
-                    fail_silently=True # Verhindert Error 500 bei Problemen
-                )
-        except Exception as e:
-            print(f"MAIL ERROR: {e}", flush=True)
+                <button type="submit" class="button" style="width: 100%;">Send Message</button>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}
 
-        return submission
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.contact-form input, .contact-form textarea').forEach(function(el) {
+            el.addEventListener('keydown', function(e) { if(e.key === ' ') { e.stopPropagation(); } });
+        });
+    });
+    </script>
+{% endblock %}
