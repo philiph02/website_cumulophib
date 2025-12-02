@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static wagtailcore_tags %}
+{% load static %}
 
 {% block extra_head %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
@@ -38,16 +38,12 @@
         <div class="contact-container">
             <div class="contact-info">
                 <div class="contact-intro">
-                    {% if page.intro %}
-                        {{ page.intro|richtext }}
-                    {% else %}
-                        <p style="margin-bottom: 1rem;">
-                            Are you interested in <span class="highlight-text">booking me for an event</span>, or would you like to receive a non-binding offer?
-                        </p>
-                        <p>
-                            Also, if you have any questions regarding my <span class="highlight-text">Fine Art Prints</span> or are experiencing technical issues with the shop, please don't hesitate to contact me.
-                        </p>
-                    {% endif %}
+                    <p style="margin-bottom: 1rem;">
+                        Are you interested in <span class="highlight-text">booking me for an event</span>, or would you like to receive a non-binding offer?
+                    </p>
+                    <p>
+                        Also, if you have any questions regarding my <span class="highlight-text">Fine Art Prints</span> or are experiencing technical issues with the shop, please don't hesitate to contact me.
+                    </p>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Email</span>
@@ -62,15 +58,8 @@
                 </a>
             </div>
 
-            <form action="{% pageurl page %}" method="POST" class="contact-form swiper-no-swiping">
+            <form action="" method="POST" class="contact-form swiper-no-swiping">
                 {% csrf_token %}
-                
-                {% if form.errors %}
-                    <div class="error-box">
-                        <strong>Please fix the errors below:</strong>
-                        {{ form.errors }}
-                    </div>
-                {% endif %}
                 
                 <div class="form-group">
                     <label class="form-label">Name</label>
