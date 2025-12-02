@@ -150,20 +150,22 @@
         
                 <div class="nav__menu" id="nav-menu">
                     <ul class="nav__list">
-                        {% if shop_page %}
-                            <li class="nav__item"><a href="{% pageurl shop_page %}" class="nav__link {% if page.url == shop_page.url or page.get_parent.url == shop_page.url %}active-link{% endif %}">Shop</a></li>
-                        {% endif %}
-                        {% if photography_page %}
-                            <li class="nav__item"><a href="{% pageurl photography_page %}" class="nav__link {% if page.url == photography_page.url %}active-link{% endif %}">Book Me</a></li>
-                        {% endif %}
-                        {% if about_page %}
-                            <li class="nav__item"><a href="{% pageurl about_page %}" class="nav__link {% if page.url == about_page.url %}active-link{% endif %}">About Me</a></li>
-                        {% endif %}
 
                         <li class="nav__item">
-                            <a href="/contact/" class="nav__link {% if request.path == '/contact/' %}active-link{% endif %}">Contact</a>
+                            <a href="/" class="nav__link {% if request.path == '/' %}active-link{% endif %}">Shop</a>
+                        </li>
+
+                        <li class="nav__item">
+                            <a href="/bookme/" class="nav__link {% if '/photography/' in request.path %}active-link{% endif %}">Book Me</a>
                         </li>
                         
+                        <li class="nav__item">
+                            <a href="/about/" class="nav__link {% if '/about/' in request.path %}active-link{% endif %}">About Me</a>
+                        </li>
+
+                        <li class="nav__item">
+                            <a href="/contact/" class="nav__link {% if '/contact/' in request.path %}active-link{% endif %}">Contact</a>
+                        </li>
                     </ul>
                     <div class="nav__close" id="nav-close"><i class="bx bx-x"></i></div>
                 </div>

@@ -70,25 +70,25 @@ class IndexShopPage(Page):
         return context
 
 # --- 4. REGISTRATION ---
-class RegistrationPage(Page):
-    template = "home/registration.html"
-    def serve(self, request, *args, **kwargs):
-        from .forms import RegistrationForm
-        shop_page = IndexShopPage.objects.live().first()
-        if request.method == 'POST':
-            form = RegistrationForm(request.POST)
-            if form.is_valid():
-                user = form.save()
-                login(request, user)
-                messages.success(request, f"Welcome, {user.username}!")
-                return redirect(shop_page.url if shop_page else '/')
-            else:
-                messages.error(request, "Please correct the errors below.")
-        else:
-            form = RegistrationForm()
-        context = self.get_context(request)
-        context['form'] = form
-        return render(request, self.template, context)
+# class RegistrationPage(Page):
+#     template = "home/registration.html"
+#     def serve(self, request, *args, **kwargs):
+#         from .forms import RegistrationForm
+#         shop_page = IndexShopPage.objects.live().first()
+#         if request.method == 'POST':
+#             form = RegistrationForm(request.POST)
+#             if form.is_valid():
+#                 user = form.save()
+#                 login(request, user)
+#                 messages.success(request, f"Welcome, {user.username}!")
+#                 return redirect(shop_page.url if shop_page else '/')
+#             else:
+#                 messages.error(request, "Please correct the errors below.")
+#         else:
+#             form = RegistrationForm()
+#         context = self.get_context(request)
+#         context['form'] = form
+#         return render(request, self.template, context)
 
 # --- 5. CHECKOUT ---
 class Order(models.Model):

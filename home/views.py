@@ -46,6 +46,32 @@ def calculate_cart_shipping(cart_session, country_code):
         
     return price_cents, label
 
+# --- MANUELLE VIEWS FÜR HAUPTSEITEN ---
+
+def index_shop_view(request):
+    # Holt den Shop-Inhalt manuell für die Startseite
+    shop_page = IndexShopPage.objects.live().first()
+    products = ProductPage.objects.live().public().descendant_of(shop_page)
+    cheapest = PrintSizePrice.objects.all().order_by('base_price').first()
+    cheapest_price = cheapest.base_price if cheapest else 0
+    
+    context = {
+        'page': shop_page,
+        'grid_products': products,
+        'cheapest_price': cheapest_price,
+    }
+    return render(request, 'home/index_shop.html', context)
+
+def home_view(request):
+    # Holt die "About Me" Seite
+    about_page = HomePage.objects.live().first()
+    return render(request, 'home/index.html', {'page': about_page})
+
+def photography_view(request):
+    # Holt die Photography Seite
+    photo_page = PhotographyPage.objects.live().first()
+    return render(request, 'home/photography.html', {'page': photo_page})
+
 # --- Cart Views ---
 def add_to_cart(request, product_id):
     try: product = ProductPage.objects.get(id=product_id)
