@@ -1,4 +1,4 @@
-{% load static wagtailcore_tags wagtailuserbar wagtailimages_tags %}
+{% load static wagtailcore_tags wagtailimages_tags %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -130,8 +130,7 @@
     </head>
 
     <body class="{% block body_class %}{% endblock %}">
-        {% wagtailuserbar %}
-        
+
         <div class="cart-overlay" id="cart-overlay"></div>
 
         {% if messages %}

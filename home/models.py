@@ -12,20 +12,32 @@ from modelcluster.fields import ParentalKey
 from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
 from django.core.mail import send_mail
 
-# --- 1. PRICING SNIPPET ---
+# --- 1. PRICING SNIPPET (Refactored for Absolute Prices) ---
 @register_snippet
 class PrintSizePrice(models.Model):
     size_name = models.CharField(max_length=100)
-    base_price = models.DecimalField(decimal_places=2, max_digits=10)
-    frame_addon_price = models.DecimalField(decimal_places=2, max_digits=10)
+    
+    # Absolute Prices
+    price_fine_art = models.DecimalField(decimal_places=2, max_digits=10, default=0, verbose_name="Price: Fine Art Print")
+    price_alu_dibond = models.DecimalField(decimal_places=2, max_digits=10, default=0, verbose_name="Price: Alu-Composite")
+    price_shadow_gap = models.DecimalField(decimal_places=2, max_digits=10, default=0, verbose_name="Price: Shadow Gap Frame")
+
+    # Recommendation Logic
+    recommend_shadow_gap = models.BooleanField(default=False, verbose_name="Show 'Recommended' badge on this size when Shadow Gap is picked?")
+
     panels = [
         FieldPanel('size_name'),
-        FieldRowPanel([FieldPanel('base_price'), FieldPanel('frame_addon_price')])
+        FieldRowPanel([
+            FieldPanel('price_fine_art'), 
+            FieldPanel('price_alu_dibond'),
+            FieldPanel('price_shadow_gap')
+        ]),
+        FieldPanel('recommend_shadow_gap')
     ]
     def __str__(self):
-        return f"{self.size_name} ({self.base_price} €)"
+        return f"{self.size_name}"
 
-# --- 2. PAGES (Home, Photography, Product) ---
+# --- 2. PAGES ---
 class HomePage(Page):
     template = "home/about.html"
 
@@ -37,12 +49,25 @@ class ProductPage(Page):
     product_image = models.ForeignKey("wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+")
     orientation = models.CharField(max_length=20, choices=[('horizontal', 'Horizontal'), ('vertical', 'Vertical'), ('squared', 'Squared')], default='vertical')
     description_text = models.TextField(blank=True)
-    content_panels = Page.content_panels + [MultiFieldPanel([FieldPanel("product_image"), FieldPanel("orientation")], heading="Product Details"), FieldPanel("description_text")]
+    
+    # Checkbox to control default border state for 60x40
+    default_border_large = models.BooleanField(default=True, verbose_name="Default 'Borders' checked for 60x40?")
+
+    content_panels = Page.content_panels + [
+        MultiFieldPanel([
+            FieldPanel("product_image"), 
+            FieldPanel("orientation"),
+            FieldPanel("default_border_large")
+        ], heading="Product Details"), 
+        FieldPanel("description_text")
+    ]
     parent_page_types = ['home.IndexShopPage']
+    
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
         context['related_products'] = ProductPage.objects.live().exclude(pk=self.pk).order_by('?')[:3]
-        context['all_variants'] = PrintSizePrice.objects.all().order_by('base_price')
+        # Sort by Fine Art price
+        context['all_variants'] = PrintSizePrice.objects.all().order_by('price_fine_art')
         return context
 
 # --- 3. SHOP INDEX ---
@@ -63,32 +88,10 @@ class IndexShopPage(Page):
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
         context['grid_products'] = ProductPage.objects.child_of(self).live().specific()
-        cheapest = PrintSizePrice.objects.all().order_by('base_price').first()
-        context['cheapest_price'] = cheapest.base_price if cheapest else 0
-        context['registration_page'] = RegistrationPage.objects.live().first()
+        cheapest = PrintSizePrice.objects.all().order_by('price_fine_art').first()
+        context['cheapest_price'] = cheapest.price_fine_art if cheapest else 0
         context['featured_slider_items'] = self.featured_products.all()
         return context
-
-# --- 4. REGISTRATION ---
-# class RegistrationPage(Page):
-#     template = "home/registration.html"
-#     def serve(self, request, *args, **kwargs):
-#         from .forms import RegistrationForm
-#         shop_page = IndexShopPage.objects.live().first()
-#         if request.method == 'POST':
-#             form = RegistrationForm(request.POST)
-#             if form.is_valid():
-#                 user = form.save()
-#                 login(request, user)
-#                 messages.success(request, f"Welcome, {user.username}!")
-#                 return redirect(shop_page.url if shop_page else '/')
-#             else:
-#                 messages.error(request, "Please correct the errors below.")
-#         else:
-#             form = RegistrationForm()
-#         context = self.get_context(request)
-#         context['form'] = form
-#         return render(request, self.template, context)
 
 # --- 5. CHECKOUT ---
 class Order(models.Model):
@@ -112,23 +115,19 @@ class OrderItem(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField(default=1)
     size_name = models.CharField(max_length=100, blank=True, default='')
-    framed = models.BooleanField(default=False)
+    finish = models.CharField(max_length=100, default='Fine Art Print')
+    has_borders = models.BooleanField(default=False)
+    framed = models.BooleanField(default=False) 
     def __str__(self): return f"{self.order.id} - {self.product.title}"
 
-
-# --- 6. CONTACT PAGE (HIER IST DIE MAGIE) ---
-
+# --- 6. CONTACT PAGE ---
 class FormField(AbstractFormField):
     page = ParentalKey('ContactPage', on_delete=models.CASCADE, related_name='form_fields')
 
-    
 class ContactPage(AbstractEmailForm):
-    # Zeigt auf deine Datei im footer Ordner
     template = "home/footer/contact.html"
-    
     intro = RichTextField(blank=True)
     thank_you_text = RichTextField(blank=True)
-
     content_panels = AbstractEmailForm.content_panels + [
         FieldPanel('intro'),
         InlinePanel('form_fields', label="Form fields"),
@@ -141,24 +140,18 @@ class ContactPage(AbstractEmailForm):
     ]
 
     def process_form_submission(self, form):
-        # 1. Wagtail speichert die Nachricht in der Datenbank
         submission = super().process_form_submission(form)
-
-        # 2. Bestätigungs-Mail an den Besucher senden
         try:
             user_email = form.cleaned_data.get('email')
             user_name = form.cleaned_data.get('name', 'Besucher')
-            
             if user_email:
-                print(f"DEBUG: Sende Bestätigung an {user_email}", flush=True)
                 send_mail(
                     subject="Eingangsbestätigung: Deine Nachricht an Cumulophib",
                     message=f"Hallo {user_name},\n\ndanke für deine Nachricht! Ich habe sie erhalten und melde mich so schnell wie möglich bei dir.\n\nBeste Grüße,\nPhilip",
-                    from_email='pheinrich210@gmail.com', # Muss mit settings.py übereinstimmen
+                    from_email='pheinrich210@gmail.com',
                     recipient_list=[user_email],
-                    fail_silently=True # Verhindert Error 500 bei Problemen
+                    fail_silently=True
                 )
         except Exception as e:
             print(f"MAIL ERROR: {e}", flush=True)
-
         return submission

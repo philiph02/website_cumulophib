@@ -27,8 +27,13 @@ def calculate_cart_shipping(cart_session, country_code):
     for k, item in cart_session.items():
         if isinstance(item, dict):
             size = item.get('size_name', '')
-            framed = item.get('framed', False)
-            if 'A2' in str(size).upper() or framed:
+            finish = item.get('finish', '')
+            
+            # Logic: If 60x40 (formerly A2) OR Shadow Gap Frame is selected -> Heavy shipping
+            is_large = '60x40' in str(size).upper() or 'A2' in str(size).upper()
+            is_framed = 'Shadow Gap' in str(finish)
+            
+            if is_large or is_framed:
                 has_heavy_item = True
     
     price_cents = 2990
@@ -46,14 +51,13 @@ def calculate_cart_shipping(cart_session, country_code):
         
     return price_cents, label
 
-# --- MANUELLE VIEWS FÜR HAUPTSEITEN ---
+# --- MANUELLE VIEWS ---
 
 def index_shop_view(request):
-    # Holt den Shop-Inhalt manuell für die Startseite
     shop_page = IndexShopPage.objects.live().first()
     products = ProductPage.objects.live().public().descendant_of(shop_page)
-    cheapest = PrintSizePrice.objects.all().order_by('base_price').first()
-    cheapest_price = cheapest.base_price if cheapest else 0
+    cheapest = PrintSizePrice.objects.all().order_by('price_fine_art').first()
+    cheapest_price = cheapest.price_fine_art if cheapest else 0
     
     context = {
         'page': shop_page,
@@ -64,49 +68,53 @@ def index_shop_view(request):
     return render(request, 'home/index_shop.html', context)
 
 def home_view(request):
-    # Holt die "About Me" Seite
     about_page = HomePage.objects.live().first()
-    # HIER: Pfad zu deiner neuen about.html (oder footer/about.html, je nachdem wo sie liegt)
-    # Ich nehme an, sie liegt direkt in home/templates/home/about.html
     return render(request, 'home/about.html', {'page': about_page})
 
 def photography_view(request):
-    # Holt die Photography Seite
     photo_page = PhotographyPage.objects.live().first()
     return render(request, 'home/photography.html', {'page': photo_page})
 
-# --- Cart Views ---
 def add_to_cart(request, product_id):
     try: product = ProductPage.objects.get(id=product_id)
     except: return HttpResponseBadRequest("Product not found")
     cart = request.session.get('cart', {})
     
-    # 1. Get Inputs
     quantity = 1
     if request.method == 'POST':
         try: quantity = int(request.POST.get('quantity', 1))
         except: quantity = 1
             
     size_id = request.POST.get('size_variant')
-    add_frame = (request.POST.get('add_frame', 'false') == 'true')
+    finish_type = request.POST.get('finish_variant', 'fine_art') 
+    has_borders = (request.POST.get('add_borders', 'false') == 'true')
     
-    # 2. Calculate Price
     size_name = "Standard"
-    price_to_add = 0 
+    price_to_add = 0
+    finish_name = "Fine Art Print"
     
     if size_id:
         try:
             v = PrintSizePrice.objects.get(id=size_id)
             size_name = v.size_name
-            price_to_add = v.base_price
-            if add_frame: price_to_add += v.frame_addon_price
+            
+            # --- USE ABSOLUTE PRICES ---
+            if finish_type == 'alu_dibond':
+                price_to_add = v.price_alu_dibond
+                finish_name = "Alu-Composite Frameless"
+            elif finish_type == 'shadow_gap':
+                price_to_add = v.price_shadow_gap
+                finish_name = "Alu-Composite + Shadow Gap Frame"
+            else: # fine_art
+                price_to_add = v.price_fine_art
+                finish_name = "Fine Art Print"
+                
         except: pass
-    
     if price_to_add == 0:
         v = PrintSizePrice.objects.first()
-        if v: price_to_add = v.base_price
+        if v: price_to_add = v.price_fine_art
 
-    cart_key = f"{product.id}_{size_id}_{add_frame}"
+    cart_key = f"{product.id}_{size_id}_{finish_type}_{has_borders}"
     
     if cart_key in cart:
         cart[cart_key]['quantity'] += quantity
@@ -115,7 +123,9 @@ def add_to_cart(request, product_id):
             'product_id': product.id, 
             'product_title': product.title, 
             'size_name': size_name, 
-            'framed': add_frame, 
+            'finish': finish_name,
+            'framed': (finish_type == 'shadow_gap'),
+            'has_borders': has_borders,
             'quantity': quantity, 
             'price': str(price_to_add)
         }
@@ -124,7 +134,6 @@ def add_to_cart(request, product_id):
     request.session.modified = True
     messages.success(request, f"Added {product.title} to cart")
 
-    # Redirect with Parameters to keep selection
     from urllib.parse import urlparse, urlunparse
     from django.http import QueryDict
     referer = request.META.get('HTTP_REFERER', '/')
@@ -132,7 +141,8 @@ def add_to_cart(request, product_id):
         parsed = urlparse(referer)
         query = QueryDict(parsed.query, mutable=True)
         query['size'] = size_id
-        query['frame'] = 'true' if add_frame else 'false'
+        query['finish'] = finish_type
+        query['borders'] = 'true' if has_borders else 'false'
         new_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, query.urlencode(), parsed.fragment))
         return redirect(new_url)
         
@@ -145,7 +155,6 @@ def remove_one_from_cart(request, product_id):
     request.session.modified = True
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
-# --- API: Update Shipping ---
 @csrf_exempt
 def update_cart_shipping(request):
     if request.method != 'POST': return JsonResponse({'error': 'POST required'}, status=400)
@@ -170,7 +179,6 @@ def update_cart_shipping(request):
         'label': label
     })
 
-# --- Checkout View ---
 def checkout_page(request):
     cart_session = request.session.get('cart', {})
     if not cart_session: return redirect('/')
@@ -179,10 +187,14 @@ def checkout_page(request):
     stripe_line_items = []
     for k, item in cart_session.items():
         if isinstance(item, dict):
+            desc = f"{item['product_title']} ({item.get('size_name')}) - {item.get('finish')}"
+            if item.get('has_borders'):
+                desc += " [With Borders]"
+                
             stripe_line_items.append({
                 'price_data': {
                     'currency': 'eur',
-                    'product_data': {'name': f"{item['product_title']} ({item.get('size_name')})"},
+                    'product_data': {'name': desc},
                     'unit_amount': int(float(item['price']) * 100),
                 },
                 'quantity': int(item['quantity']),
@@ -216,7 +228,6 @@ def checkout_page(request):
         'STRIPE_PUBLISHABLE_KEY': settings.STRIPE_PUBLISHABLE_KEY
     })
 
-# --- Success View ---
 def checkout_success(request):
     session_id = request.GET.get('session_id')
     if not session_id: return redirect('/')
@@ -241,41 +252,42 @@ def checkout_success(request):
         cart = request.session.get('cart', {})
         real_ids = [k.split('_')[0] for k in cart.keys()]
         products = {str(p.id): p for p in ProductPage.objects.filter(id__in=real_ids)}
+        
         for k, item in cart.items():
             if isinstance(item, dict) and str(item['product_id']) in products:
-                OrderItem.objects.create(order=order, product=products[str(item['product_id'])], price=item['price'], quantity=item['quantity'], size_name=item.get('size_name', ''), framed=item.get('framed', False))
+                OrderItem.objects.create(
+                    order=order, 
+                    product=products[str(item['product_id'])], 
+                    price=item['price'], 
+                    quantity=item['quantity'], 
+                    size_name=item.get('size_name', ''), 
+                    finish=item.get('finish', 'Fine Art Print'),
+                    has_borders=item.get('has_borders', False),
+                    framed=item.get('framed', False)
+                )
         request.session['cart'] = {}
         return render(request, 'home/checkout_done.html', {'order': order})
     except Exception as e:
         return HttpResponseBadRequest(f"Error: {e}")
 
-# --- Auth Views ---
 def login_view(request): return redirect('/')
 def logout_view(request): return redirect('/')
-
-# --- FOOTER VIEWS (NEW) ---
-def shipping_info_view(request):
-    return render(request, 'home/footer/shipping.html')
-
-def returns_view(request):
-    return render(request, 'home/footer/returns.html')
+def shipping_info_view(request): return render(request, 'home/footer/shipping.html')
+def returns_view(request): return render(request, 'home/footer/returns.html')
+def imprint_view(request): return render(request, 'home/footer/imprint.html')
+def privacy_view(request): return render(request, 'home/footer/privacy.html')
+def terms_view(request): return render(request, 'home/footer/terms.html')
 
 def contact_view(request):
     if request.method == "POST":
         name = request.POST.get('name')
         email = request.POST.get('email')
         message = request.POST.get('message')
-
-        # --- KONFIGURATION ---
-        # Hier legen wir den schönen Absender-Namen fest
         sender_name = "Cumulophib"
-        sender_email = settings.DEFAULT_FROM_EMAIL # pheinrich210@gmail.com
-        
-        # So sieht der Absender im Postfach aus: "Cumulophib Photography <pheinrich210@gmail.com>"
+        sender_email = settings.DEFAULT_FROM_EMAIL
         full_sender = f"{sender_name} <{sender_email}>"
 
         try:
-            # 1. E-Mail an DICH (Admin)
             send_mail(
                 subject=f"New Contact: {name}",
                 message=f"New message received via website.\n\nName: {name}\nEmail: {email}\n\nMessage:\n{message}",
@@ -283,28 +295,8 @@ def contact_view(request):
                 recipient_list=['hello@cumulophib.com'],
                 fail_silently=False,
             )
-            
-            # 2. Professionelle Bestätigung an den BESUCHER
             visitor_subject = "We received your message | Cumulophib"
-            
-            visitor_message = f"""Hi {name},
-
-Thank you for reaching out to Cumulophib! 
-
-I have received your message and will get back to you as soon as possible.
-
-In the meantime, feel free to browse my latest work on my website or Instagram.
-
---------------------------------------------------
-Philip Heinrich
-Cumulophib 
-Website: https://www.cumulophib.com
-Instagram: @cumulophib
-Email: hello@cumulophib.com
---------------------------------------------------
-(This is an automated confirmation. Please do not reply to this specific email.)
-"""
-
+            visitor_message = f"""Hi {name},\n\nThank you for reaching out to Cumulophib! \n\nI have received your message and will get back to you as soon as possible.\n\n--------------------------------------------------\nPhilip Heinrich\nCumulophib \nWebsite: https://www.cumulophib.com\nEmail: hello@cumulophib.com\n--------------------------------------------------"""
             send_mail(
                 subject=visitor_subject,
                 message=visitor_message,
@@ -312,21 +304,8 @@ Email: hello@cumulophib.com
                 recipient_list=[email],
                 fail_silently=True,
             )
-            
             messages.success(request, "Message sent successfully!")
             return redirect('contact')
-
         except Exception as e:
-            print(f"EMAIL ERROR: {e}")
             messages.error(request, f"Error sending message: {str(e)}")
-
     return render(request, 'home/footer/contact.html')
-
-def imprint_view(request):
-    return render(request, 'home/footer/imprint.html')
-
-def privacy_view(request):
-    return render(request, 'home/footer/privacy.html')
-
-def terms_view(request):
-    return render(request, 'home/footer/terms.html')

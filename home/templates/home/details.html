@@ -1,27 +1,28 @@
 {% extends "base.html" %}
-{% load static wagtailcore_tags wagtailimages_tags %}
+{% load static wagtailcore_tags wagtailimages_tags l10n %}
 
 {% block extra_head %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
     <link rel="stylesheet" href="{% static 'home/assets_shop/css/swiper-bundle.min.css' %}">
-    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}?v=1.0.9">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}?v=1.6.0">
     <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
 
     <style>
-    /* --- TOGGLE BUTTON STYLES --- */
+    /* --- SIZE SELECTION (2 Boxes Side-by-Side) --- */
     .option-toggle {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem; 
       max-width: 100%;
-      margin-bottom: 1rem; 
-      padding: 8px; 
+      margin-bottom: 1.5rem; 
+      padding: 8px 0;
     }
-    .opt {
+    .opt-size {
       position: relative; 
       display: flex;
       align-items: center;
       justify-content: center;
+      text-align: center;
       border: 2px solid var(--scroll-bar-color);
       border-radius: .5rem;
       padding: 1rem;
@@ -29,38 +30,94 @@
       background: var(--container-color);
       color: var(--text-color);
       transition: all 0.2s ease;
-      overflow: visible !important; 
-      z-index: 1; 
+      font-weight: 500;
     }
-    .opt:hover {
-      border-color: var(--text-color);
+    .opt-size:hover { border-color: var(--text-color); }
+    .opt-size.is-active {
+      background: #575757; color: #fff; border-color: #575757;
     }
-    .opt.is-active {
-      background: #575757;
-      color: #fff;
-      border-color: #575757;
-      font-weight: var(--font-medium);
-    }
-    .opt input[type="radio"] {
-        position: absolute; opacity: 0; width: 0; height: 0;
+    .opt-size input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+    /* --- FINISH SELECTION (One Single Split Box) --- */
+    .finish-box {
+        display: flex;
+        flex-direction: column;
+        border: 2px solid var(--scroll-bar-color);
+        border-radius: .5rem;
+        overflow: hidden; 
+        margin-bottom: 1.5rem;
+        background-color: var(--container-color);
     }
 
-    /* --- FREE SHIPPING BADGE --- */
+    .opt-finish {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.2rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid var(--scroll-bar-color); 
+        color: var(--text-color);
+        transition: background 0.2s ease;
+        font-weight: 400;
+    }
+
+    /* Remove divider from last item */
+    .opt-finish:last-child {
+        border-bottom: none;
+    }
+
+    .opt-finish:hover {
+        background-color: var(--body-color);
+    }
+
+    .opt-finish.is-active {
+        background: #575757;
+        color: #fff;
+    }
+    
+    .finish-text {
+        font-size: var(--normal-font-size);
+    }
+
+    .opt-finish input { position: absolute; opacity: 0; }
+
+    /* --- CHECKBOX (Borders) --- */
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        margin-top: 1rem;
+        cursor: pointer;
+        user-select: none;
+    }
+    .checkbox-container input {
+        width: 1.5rem; 
+        height: 1.5rem; 
+        margin-right: 0.75rem; 
+        accent-color: var(--first-color);
+        cursor: pointer;
+    }
+    .checkbox-label {
+        font-size: var(--normal-font-size);
+        color: var(--title-color);
+    }
+
+    /* --- BADGES --- */
     .shipping-badge {
-        position: absolute;
-        top: -8px; right: -8px;
-        background: #e74c3c; 
-        border: 1px solid #e74c3c;
-        color: white;      
-        font-size: 0.55rem; 
-        font-weight: 600;
-        padding: 0.15rem 0.35rem;
-        border-radius: 0.2rem;
-        line-height: 1.2;
-        text-transform: uppercase;
-        white-space: nowrap; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        z-index: 10; 
+        position: absolute; top: -8px; right: -8px;
+        background: #e74c3c; border: 1px solid #e74c3c;
+        color: white; font-size: 0.55rem; font-weight: 600;
+        padding: 0.15rem 0.35rem; border-radius: 0.2rem;
+        text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 10;
+    }
+
+    .recommended-badge {
+        position: absolute; top: -8px; left: -8px; 
+        background: #f39c12; border: 1px solid #f39c12;
+        color: white; font-size: 0.55rem; font-weight: 600;
+        padding: 0.15rem 0.35rem; border-radius: 0.2rem;
+        text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 10;
+        display: none; 
     }
     </style>
 {% endblock %}
@@ -98,8 +155,8 @@
                 <div class="details__description" style="margin-top: var(--mb-2);">
                     <p style="margin-bottom: 1rem; font-size: var(--small-font-size); color: var(--text-color);">
                         Produced on the finest photo paper, each print captures every detail with stunning clarity. 
-                        Choose between A2 (42.0 x 59.4 cm) and A3 (29.7 x 42.0 cm) formats, available with or 
-                        without a high-quality frame to perfectly match your space.
+                        Choose between 60x40 cm and 45x30 cm formats, available with optional 
+                        Alu-Composite mounting or Shadow Gap frames.
                     </p>
                     <div class="simple-description">
                         {{ page.description_text | linebreaks }}
@@ -113,27 +170,38 @@
                         {% if variants %}
                             <div class="option-toggle" role="group" aria-label="Größe">
                                 {% for variant in variants %}
-                                <label class="opt {% if forloop.first %}is-active{% endif %}">
+                                <label class="opt-size {% if forloop.first %}is-active{% endif %}" id="size-label-{{ variant.id }}">
                                     <input type="radio" name="size_variant" value="{{ variant.id }}" {% if forloop.first %}checked{% endif %}>
                                     <span>{{ variant.size_name }}</span>
-                                    {% if "A2" in variant.size_name %}
+                                    
+                                    {% if "60x40" in variant.size_name %}
                                         <div class="shipping-badge">Free Shipping</div>
                                     {% endif %}
+                                    
+                                    <div class="recommended-badge" id="rec-badge-{{ variant.id }}">Recommended</div>
                                 </label>
                                 {% endfor %}
                             </div>
                             
-                            <div class="option-toggle" role="group" aria-label="Frame Option">
-                                <label class="opt is-active">
-                                    <input type="radio" name="add_frame" value="false" checked>
-                                    <span>No Frame</span>
+                            <div class="finish-box" role="group" aria-label="Finish">
+                                <label class="opt-finish is-active">
+                                    <input type="radio" name="finish_variant" value="fine_art" checked>
+                                    <span class="finish-text" id="text-fine">Fine Art Print</span>
                                 </label>
-                                <label class="opt">
-                                    <input type="radio" name="add_frame" value="true">
-                                    <span>With Frame</span>
-                                    <div class="shipping-badge">Free Shipping</div>
+                                <label class="opt-finish">
+                                    <input type="radio" name="finish_variant" value="alu_dibond">
+                                    <span class="finish-text" id="text-alu">Alu-Composite Frameless</span>
+                                </label>
+                                <label class="opt-finish">
+                                    <input type="radio" name="finish_variant" value="shadow_gap">
+                                    <span class="finish-text" id="text-shadow">Alu-Composite + Shadow Gap Frame</span>
                                 </label>
                             </div>
+
+                            <label class="checkbox-container">
+                                <input type="checkbox" name="add_borders" id="borders-checkbox" value="true">
+                                <span class="checkbox-label">Add White Borders</span>
+                            </label>
                         
                         {% else %}
                             <p>Dieses Produkt ist derzeit nicht verfügbar.</p>
@@ -163,7 +231,7 @@
                         <div class="shop__prices">
                             {% with all_variants|first as first_variant %}
                                 {% if first_variant %}
-                                    <span class="shop__price">From {{ first_variant.base_price }} €</span>
+                                    <span class="shop__price">From {{ first_variant.price_fine_art|default:"0.00"|unlocalize }} €</span>
                                 {% endif %}
                             {% endwith %}
                         </div>
@@ -202,140 +270,147 @@
 
     <script>
     (function() {
-        const toggles = document.querySelectorAll('.option-toggle');
-        toggles.forEach(toggle => {
-            const inputs = toggle.querySelectorAll('input[type="radio"]');
-            inputs.forEach(input => {
+        // Size Box
+        const sizeBox = document.querySelector('.option-toggle');
+        if(sizeBox) {
+            sizeBox.querySelectorAll('input').forEach(input => {
                 input.addEventListener('change', function() {
-                    const labels = toggle.querySelectorAll('.opt');
-                    labels.forEach(label => label.classList.remove('is-active'));
-                    if (this.checked) this.parentElement.classList.add('is-active');
+                    sizeBox.querySelectorAll('.opt-size').forEach(l => l.classList.remove('is-active'));
+                    if(this.checked) this.parentElement.classList.add('is-active');
                 });
             });
-        });
+        }
+        // Finish Box
+        const finishBox = document.querySelector('.finish-box');
+        if(finishBox) {
+            finishBox.querySelectorAll('input').forEach(input => {
+                input.addEventListener('change', function() {
+                    finishBox.querySelectorAll('.opt-finish').forEach(l => l.classList.remove('is-active'));
+                    if(this.checked) this.parentElement.classList.add('is-active');
+                });
+            });
+        }
     })();
     </script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        // 1. Data Object (Safe from formatting issues)
         const priceData = {
         {% for variant in all_variants %}
             '{{ variant.id }}': {
-                'base': {{ variant.base_price | floatformat:2 }}, 
-                'frame_addon': {{ variant.frame_addon_price | floatformat:2 }},
-                'name': "{{ variant.size_name|escapejs }}"
+                'p_fine': {{ variant.price_fine_art|default:0|unlocalize }}, 
+                'p_alu': {{ variant.price_alu_dibond|default:0|unlocalize }},
+                'p_shadow': {{ variant.price_shadow_gap|default:0|unlocalize }},
+                'name': "{{ variant.size_name|escapejs }}",
+                'recommend_shadow': {{ variant.recommend_shadow_gap|yesno:"true,false" }}
             }{% if not forloop.last %},{% endif %}
         {% endfor %}
         };
 
+        const defaultBorderLarge = {{ page.default_border_large|yesno:"true,false" }};
+
         const priceDisplay = document.getElementById('product-price');
         const shippingText = document.getElementById('free-shipping-text');
         const sizeRadios = document.querySelectorAll('input[name="size_variant"]');
-        const frameRadios = document.querySelectorAll('input[name="add_frame"]');
+        const finishRadios = document.querySelectorAll('input[name="finish_variant"]');
+        const borderCheckbox = document.getElementById('borders-checkbox');
+
+        const textFine = document.getElementById('text-fine');
+        const textAlu = document.getElementById('text-alu');
+        const textShadow = document.getElementById('text-shadow');
 
         function updatePrice() {
             try {
                 const selectedSizeInput = document.querySelector('input[name="size_variant"]:checked');
-                const selectedFrameInput = document.querySelector('input[name="add_frame"]:checked');
+                const selectedFinishInput = document.querySelector('input[name="finish_variant"]:checked');
 
-                if(!selectedSizeInput || !selectedFrameInput) return;
+                if(!selectedSizeInput || !selectedFinishInput) return;
 
                 const variantData = priceData[selectedSizeInput.value];
                 if (!variantData) return;
 
-                let finalPrice = variantData.base;
-                if (selectedFrameInput.value === 'true') {
-                    finalPrice += variantData.frame_addon;
+                const finishVal = selectedFinishInput.value;
+                
+                // --- 1. Identify Current Price (The baseline for diffs) ---
+                let currentPrice = 0;
+                if (finishVal === 'alu_dibond') currentPrice = variantData.p_alu;
+                else if (finishVal === 'shadow_gap') currentPrice = variantData.p_shadow;
+                else currentPrice = variantData.p_fine;
+                
+                // Update Main Price Display
+                if(priceDisplay) {
+                    priceDisplay.textContent = currentPrice.toFixed(2) + ' €';
                 }
-                priceDisplay.textContent = finalPrice.toFixed(2) + ' €';
 
-                // Show "Free Shipping" text if A2 or Framed
-                const isA2 = variantData.name.toUpperCase().includes("A2");
-                const isFramed = (selectedFrameInput.value === 'true');
+                // --- 2. Calculate Diffs Relative to Current Selection ---
+                const diffFine = variantData.p_fine - currentPrice;
+                const diffAlu = variantData.p_alu - currentPrice;
+                const diffShadow = variantData.p_shadow - currentPrice;
 
-                if (isA2 || isFramed) {
-                    shippingText.style.display = 'inline-block';
-                } else {
-                    shippingText.style.display = 'none';
+                // Formatting Helper: Handles + and - signs automatically
+                const fmt = (val) => {
+                    if(val === 0) return "";
+                    // Note: .toFixed(2) keeps negative sign for negative numbers
+                    const sign = val > 0 ? "+" : ""; 
+                    return ` (${sign}${val.toFixed(2)}€)`;
                 }
+
+                if(textFine) textFine.textContent = `Fine Art Print${fmt(diffFine)}`;
+                if(textAlu) textAlu.textContent = `Alu-Composite Frameless${fmt(diffAlu)}`;
+                if(textShadow) textShadow.textContent = `Alu-Composite + Shadow Gap Frame${fmt(diffShadow)}`;
+
+                // --- 3. Shipping Text Logic ---
+                const isLarge = variantData.name.toUpperCase().includes("60X40"); 
+                const isShadow = (finishVal === 'shadow_gap');
+
+                if(shippingText) {
+                    if (isLarge || isShadow) {
+                        shippingText.style.display = 'inline-block';
+                    } else {
+                        shippingText.style.display = 'none';
+                    }
+                }
+
+                // --- 4. Recommended Badge Logic ---
+                document.querySelectorAll('.recommended-badge').forEach(el => el.style.display = 'none');
+                if (variantData.recommend_shadow && isShadow) {
+                    const badge = document.getElementById(`rec-badge-${selectedSizeInput.value}`);
+                    if(badge) badge.style.display = 'block';
+                }
+
             } catch (e) { console.log("Update error:", e.message); }
         }
 
-        sizeRadios.forEach(r => r.addEventListener('change', updatePrice));
-        frameRadios.forEach(r => r.addEventListener('change', updatePrice));
+        // --- Handle Size Change (Reset Checkbox defaults) ---
+        let previousSize = "";
+        function handleSizeChange() {
+            const selectedSizeInput = document.querySelector('input[name="size_variant"]:checked');
+            if(!selectedSizeInput) return;
+            
+            const variantData = priceData[selectedSizeInput.value];
+            if(!variantData) return;
 
-        // 3. RESTORE SELECTION FROM URL (THE FIX YOU WANTED)
-        const urlParams = new URLSearchParams(window.location.search);
-        const sizeId = urlParams.get('size');
-        const frameVal = urlParams.get('frame');
+            const isLarge = variantData.name.toUpperCase().includes("60X40");
 
-        if (sizeId) {
-            const sizeInput = document.querySelector(`input[name="size_variant"][value="${sizeId}"]`);
-            if (sizeInput) {
-                sizeInput.checked = true;
-                sizeInput.dispatchEvent(new Event('change'));
+            if (selectedSizeInput.value !== previousSize) {
+                if (isLarge) {
+                    if(borderCheckbox) borderCheckbox.checked = defaultBorderLarge;
+                } else {
+                    if(borderCheckbox) borderCheckbox.checked = false; 
+                }
+                previousSize = selectedSizeInput.value;
             }
+            updatePrice();
         }
 
-        if (frameVal) {
-            const frameInput = document.querySelector(`input[name="add_frame"][value="${frameVal}"]`);
-            if (frameInput) {
-                frameInput.checked = true;
-                frameInput.dispatchEvent(new Event('change'));
-            }
-        }
+        // Add Listeners
+        sizeRadios.forEach(r => r.addEventListener('change', handleSizeChange));
+        finishRadios.forEach(r => r.addEventListener('change', updatePrice));
 
-        // Run once to set initial state
-        updatePrice();
+        // Initial Run
+        setTimeout(handleSizeChange, 50);
     });
-    </script>
-    
-    <script>
-        const productItems = document.querySelectorAll(".product__img"),
-              totalProductItems = productItems.length,
-              lightbox = document.querySelector(".lightbox"),
-              lightboxImg = lightbox.querySelector(".lightbox__img"),
-              lightboxClose = lightbox.querySelector(".lightbox__close"),
-              lightboxCounter = lightbox.querySelector(".caption__counter");
-        let itemIndex = 0;
-
-        for(let i=0; i<totalProductItems; i++) {
-            productItems[i].addEventListener("click", function() {
-                itemIndex=i;
-                changeItem();
-                toggleLightbox();
-            })
-        }
-
-        function nextItem() {
-            if(itemIndex === totalProductItems-1) itemIndex=0;
-            else itemIndex++;
-            changeItem()
-        }
-
-        function prevItem() {
-            if(itemIndex === 0) itemIndex=totalProductItems-1;
-            else itemIndex--;
-            changeItem()
-        }
-
-        function toggleLightbox() {
-            lightbox.classList.toggle("open");
-        }
-
-        function changeItem() {
-            let imgTag = productItems[itemIndex].querySelector("img");
-            if (imgTag) {
-                let imgSrc = imgTag.getAttribute("src");
-                lightboxImg.src = imgSrc;
-                lightboxCounter.innerHTML = (itemIndex + 1) + " of " + totalProductItems;
-            }
-        }
-
-        lightbox.addEventListener("click", function(event) {
-            if(event.target === lightboxClose || event.target === lightbox) {
-                toggleLightbox()
-            }
-        })
     </script>
 {% endblock %}
