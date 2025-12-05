@@ -4,11 +4,11 @@
 {% block extra_head %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
     <link rel="stylesheet" href="{% static 'home/assets_shop/css/swiper-bundle.min.css' %}">
-    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}?v=1.6.0">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}?v=1.7.0">
     <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
 
     <style>
-    /* --- SIZE SELECTION (2 Boxes Side-by-Side) --- */
+    /* --- SIZE SELECTION (2 Boxes) --- */
     .option-toggle {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -61,25 +61,10 @@
         transition: background 0.2s ease;
         font-weight: 400;
     }
-
-    /* Remove divider from last item */
-    .opt-finish:last-child {
-        border-bottom: none;
-    }
-
-    .opt-finish:hover {
-        background-color: var(--body-color);
-    }
-
-    .opt-finish.is-active {
-        background: #575757;
-        color: #fff;
-    }
-    
-    .finish-text {
-        font-size: var(--normal-font-size);
-    }
-
+    .opt-finish:last-child { border-bottom: none; }
+    .opt-finish:hover { background-color: var(--body-color); }
+    .opt-finish.is-active { background: #575757; color: #fff; }
+    .finish-text { font-size: var(--normal-font-size); }
     .opt-finish input { position: absolute; opacity: 0; }
 
     /* --- CHECKBOX (Borders) --- */
@@ -91,16 +76,10 @@
         user-select: none;
     }
     .checkbox-container input {
-        width: 1.5rem; 
-        height: 1.5rem; 
-        margin-right: 0.75rem; 
-        accent-color: var(--first-color);
-        cursor: pointer;
+        width: 1.5rem; height: 1.5rem; margin-right: 0.75rem; 
+        accent-color: var(--first-color); cursor: pointer;
     }
-    .checkbox-label {
-        font-size: var(--normal-font-size);
-        color: var(--title-color);
-    }
+    .checkbox-label { font-size: var(--normal-font-size); color: var(--title-color); }
 
     /* --- BADGES --- */
     .shipping-badge {
@@ -110,7 +89,6 @@
         padding: 0.15rem 0.35rem; border-radius: 0.2rem;
         text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 10;
     }
-
     .recommended-badge {
         position: absolute; top: -8px; left: -8px; 
         background: #f39c12; border: 1px solid #f39c12;
@@ -118,6 +96,27 @@
         padding: 0.15rem 0.35rem; border-radius: 0.2rem;
         text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 10;
         display: none; 
+    }
+
+    /* --- PRODUCT SLIDER CSS --- */
+    .product-slider {
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .product-slider .swiper-slide {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .product-slider img {
+        width: 100%;
+        height: auto;
+        border-radius: 8px;
+        display: block;
+    }
+    .swiper-pagination-bullet-active {
+        background: var(--first-color) !important;
     }
     </style>
 {% endblock %}
@@ -130,12 +129,49 @@
         <h3 class="breadcrumb__subtitle"><a href="{% pageurl page.get_parent %}">Shop</a> > <span>{{ page.title }}</span></h3>
 
         <div class="details__container grid">
-            <div class="product__images grid">
-                {% if page.product_image %}
-                    <div class="product__img">
-                        {% image page.product_image height-1000 alt=page.title %}
+            
+            <div class="product__images">
+                <div class="swiper product-slider">
+                    <div class="swiper-wrapper">
+                        
+                        {# 1. Default / Fine Art (No Border) #}
+                        {% if page.product_image %}
+                        <div class="swiper-slide" data-variant="fine_art">
+                            {% image page.product_image width-1200 alt=page.title %}
+                        </div>
+                        {% endif %}
+
+                        {# 2. Fine Art (With Border) #}
+                        {% if page.image_fine_art_border %}
+                        <div class="swiper-slide" data-variant="fine_art_border">
+                            {% image page.image_fine_art_border width-1200 alt="Fine Art with Border" %}
+                        </div>
+                        {% endif %}
+
+                        {# 3. Alu Dibond #}
+                        {% if page.image_alu_dibond %}
+                        <div class="swiper-slide" data-variant="alu_dibond">
+                            {% image page.image_alu_dibond width-1200 alt="Alu-Composite" %}
+                        </div>
+                        {% endif %}
+
+                        {# 4. Shadow Gap #}
+                        {% if page.image_shadow_gap %}
+                        <div class="swiper-slide" data-variant="shadow_gap">
+                            {% image page.image_shadow_gap width-1200 alt="Shadow Gap Frame" %}
+                        </div>
+                        {% endif %}
+
+                        {# 5. Extra Gallery Images #}
+                        {% for item in page.gallery_images.all %}
+                        <div class="swiper-slide" data-variant="gallery">
+                            {% image item.image width-1200 alt=item.caption %}
+                        </div>
+                        {% endfor %}
+
                     </div>
-                {% endif %}
+                    <div class="swiper-pagination"></div>
+                </div>
             </div>
 
             <div class="product__info">
@@ -173,11 +209,9 @@
                                 <label class="opt-size {% if forloop.first %}is-active{% endif %}" id="size-label-{{ variant.id }}">
                                     <input type="radio" name="size_variant" value="{{ variant.id }}" {% if forloop.first %}checked{% endif %}>
                                     <span>{{ variant.size_name }}</span>
-                                    
                                     {% if "60x40" in variant.size_name %}
                                         <div class="shipping-badge">Free Shipping</div>
                                     {% endif %}
-                                    
                                     <div class="recommended-badge" id="rec-badge-{{ variant.id }}">Recommended</div>
                                 </label>
                                 {% endfor %}
@@ -270,7 +304,6 @@
 
     <script>
     (function() {
-        // Size Box
         const sizeBox = document.querySelector('.option-toggle');
         if(sizeBox) {
             sizeBox.querySelectorAll('input').forEach(input => {
@@ -280,7 +313,6 @@
                 });
             });
         }
-        // Finish Box
         const finishBox = document.querySelector('.finish-box');
         if(finishBox) {
             finishBox.querySelectorAll('input').forEach(input => {
@@ -296,7 +328,17 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         
-        // 1. Data Object (Safe from formatting issues)
+        // --- 1. INITIALIZE SLIDER ---
+        const productSwiper = new Swiper('.product-slider', {
+            spaceBetween: 16,
+            slidesPerView: 1,
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+            },
+        });
+
+        // --- 2. PRICING DATA ---
         const priceData = {
         {% for variant in all_variants %}
             '{{ variant.id }}': {
@@ -321,6 +363,20 @@
         const textAlu = document.getElementById('text-alu');
         const textShadow = document.getElementById('text-shadow');
 
+        // --- Helper to find slide index by variant name ---
+        function slideToVariant(variantName) {
+            if(!productSwiper || !productSwiper.slides) return;
+            const slides = productSwiper.slides;
+            for (let i = 0; i < slides.length; i++) {
+                if (slides[i].getAttribute('data-variant') === variantName) {
+                    productSwiper.slideTo(i);
+                    return;
+                }
+            }
+            // Fallback: if "fine_art_border" requested but doesn't exist, try "fine_art"
+            if (variantName === 'fine_art_border') slideToVariant('fine_art');
+        }
+
         function updatePrice() {
             try {
                 const selectedSizeInput = document.querySelector('input[name="size_variant"]:checked');
@@ -333,26 +389,21 @@
 
                 const finishVal = selectedFinishInput.value;
                 
-                // --- 1. Identify Current Price (The baseline for diffs) ---
+                // --- 1. Identify Current Price ---
                 let currentPrice = 0;
                 if (finishVal === 'alu_dibond') currentPrice = variantData.p_alu;
                 else if (finishVal === 'shadow_gap') currentPrice = variantData.p_shadow;
                 else currentPrice = variantData.p_fine;
                 
-                // Update Main Price Display
-                if(priceDisplay) {
-                    priceDisplay.textContent = currentPrice.toFixed(2) + ' €';
-                }
+                if(priceDisplay) priceDisplay.textContent = currentPrice.toFixed(2) + ' €';
 
-                // --- 2. Calculate Diffs Relative to Current Selection ---
+                // --- 2. Calculate Diffs ---
                 const diffFine = variantData.p_fine - currentPrice;
                 const diffAlu = variantData.p_alu - currentPrice;
                 const diffShadow = variantData.p_shadow - currentPrice;
 
-                // Formatting Helper: Handles + and - signs automatically
                 const fmt = (val) => {
                     if(val === 0) return "";
-                    // Note: .toFixed(2) keeps negative sign for negative numbers
                     const sign = val > 0 ? "+" : ""; 
                     return ` (${sign}${val.toFixed(2)}€)`;
                 }
@@ -366,11 +417,8 @@
                 const isShadow = (finishVal === 'shadow_gap');
 
                 if(shippingText) {
-                    if (isLarge || isShadow) {
-                        shippingText.style.display = 'inline-block';
-                    } else {
-                        shippingText.style.display = 'none';
-                    }
+                    if (isLarge || isShadow) shippingText.style.display = 'inline-block';
+                    else shippingText.style.display = 'none';
                 }
 
                 // --- 4. Recommended Badge Logic ---
@@ -380,10 +428,32 @@
                     if(badge) badge.style.display = 'block';
                 }
 
+                // --- 5. SLIDER LOGIC (The "Coupling") ---
+                // Determine which image to show based on selection
+                let targetVariant = 'fine_art'; // Default
+
+                if (finishVal === 'alu_dibond') {
+                    targetVariant = 'alu_dibond';
+                } else if (finishVal === 'shadow_gap') {
+                    targetVariant = 'shadow_gap';
+                } else {
+                    // It is Fine Art. Check borders
+                    if (borderCheckbox && borderCheckbox.checked) {
+                        targetVariant = 'fine_art_border';
+                    } else {
+                        targetVariant = 'fine_art';
+                    }
+                }
+                
+                // Only slide if we have a valid target. 
+                // We use a small flag to prevent this running on page load if desired, 
+                // but usually syncing on load is good.
+                slideToVariant(targetVariant);
+
             } catch (e) { console.log("Update error:", e.message); }
         }
 
-        // --- Handle Size Change (Reset Checkbox defaults) ---
+        // --- Handle Size Change ---
         let previousSize = "";
         function handleSizeChange() {
             const selectedSizeInput = document.querySelector('input[name="size_variant"]:checked');
@@ -407,7 +477,8 @@
 
         // Add Listeners
         sizeRadios.forEach(r => r.addEventListener('change', handleSizeChange));
-        finishRadios.forEach(r => r.addEventListener('change', updatePrice));
+        finishRadios.forEach(r => r.addEventListener('change', updatePrice)); // Finish change triggers slider
+        if(borderCheckbox) borderCheckbox.addEventListener('change', updatePrice); // Border toggle triggers slider
 
         // Initial Run
         setTimeout(handleSizeChange, 50);

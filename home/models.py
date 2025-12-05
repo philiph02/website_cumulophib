@@ -12,7 +12,7 @@ from modelcluster.fields import ParentalKey
 from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
 from django.core.mail import send_mail
 
-# --- 1. PRICING SNIPPET (Refactored for Absolute Prices) ---
+# --- 1. PRICING SNIPPET ---
 @register_snippet
 class PrintSizePrice(models.Model):
     size_name = models.CharField(max_length=100)
@@ -44,9 +44,24 @@ class HomePage(Page):
 class PhotographyPage(Page):
     template = "home/photography.html"
 
+# -- New: Product Gallery Images (Extra slides) --
+class ProductGalleryImage(Orderable):
+    page = ParentalKey('ProductPage', related_name='gallery_images', on_delete=models.CASCADE)
+    image = models.ForeignKey("wagtailimages.Image", on_delete=models.CASCADE, related_name="+")
+    caption = models.CharField(blank=True, max_length=250)
+    panels = [FieldPanel('image'), FieldPanel('caption')]
+
 class ProductPage(Page):
     template = "home/details.html"
-    product_image = models.ForeignKey("wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+")
+    
+    # Main Image (Fine Art Default)
+    product_image = models.ForeignKey("wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+", verbose_name="Main Image (Fine Art / Default)")
+    
+    # Variant Specific Images
+    image_fine_art_border = models.ForeignKey("wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="Image: Fine Art + White Border")
+    image_alu_dibond = models.ForeignKey("wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="Image: Alu-Composite")
+    image_shadow_gap = models.ForeignKey("wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="Image: Shadow Gap Frame")
+
     orientation = models.CharField(max_length=20, choices=[('horizontal', 'Horizontal'), ('vertical', 'Vertical'), ('squared', 'Squared')], default='vertical')
     description_text = models.TextField(blank=True)
     
@@ -55,10 +70,14 @@ class ProductPage(Page):
 
     content_panels = Page.content_panels + [
         MultiFieldPanel([
-            FieldPanel("product_image"), 
+            FieldPanel("product_image"),
+            FieldPanel("image_fine_art_border"),
+            FieldPanel("image_alu_dibond"),
+            FieldPanel("image_shadow_gap"),
             FieldPanel("orientation"),
             FieldPanel("default_border_large")
-        ], heading="Product Details"), 
+        ], heading="Product Details"),
+        InlinePanel('gallery_images', label="Extra Gallery Images"),
         FieldPanel("description_text")
     ]
     parent_page_types = ['home.IndexShopPage']
@@ -66,7 +85,6 @@ class ProductPage(Page):
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
         context['related_products'] = ProductPage.objects.live().exclude(pk=self.pk).order_by('?')[:3]
-        # Sort by Fine Art price
         context['all_variants'] = PrintSizePrice.objects.all().order_by('price_fine_art')
         return context
 
@@ -93,7 +111,7 @@ class IndexShopPage(Page):
         context['featured_slider_items'] = self.featured_products.all()
         return context
 
-# --- 5. CHECKOUT ---
+# --- 5. CHECKOUT (Unchanged) ---
 class Order(models.Model):
     country = models.CharField(max_length=100, default='Austria')
     first_name = models.CharField(max_length=100)
@@ -120,7 +138,7 @@ class OrderItem(models.Model):
     framed = models.BooleanField(default=False) 
     def __str__(self): return f"{self.order.id} - {self.product.title}"
 
-# --- 6. CONTACT PAGE ---
+# --- 6. CONTACT PAGE (Unchanged) ---
 class FormField(AbstractFormField):
     page = ParentalKey('ContactPage', on_delete=models.CASCADE, related_name='form_fields')
 
