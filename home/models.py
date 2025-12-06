@@ -1,9 +1,6 @@
 from django.db import models
 from django.shortcuts import render, redirect
-from django.contrib.auth import login
-from django.contrib import messages
 from django.contrib.auth.models import User
-
 from wagtail.models import Page, Orderable
 from wagtail.fields import RichTextField
 from wagtail.snippets.models import register_snippet
@@ -12,72 +9,35 @@ from modelcluster.fields import ParentalKey
 from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
 from django.core.mail import send_mail
 
-# --- 1. PRICING SNIPPET ---
 @register_snippet
 class PrintSizePrice(models.Model):
     size_name = models.CharField(max_length=100)
-    
-    # Absolute Prices
     price_fine_art = models.DecimalField(decimal_places=2, max_digits=10, default=0, verbose_name="Price: Fine Art Print")
-    price_alu_dibond = models.DecimalField(decimal_places=2, max_digits=10, default=0, verbose_name="Price: Alu-Composite")
+    price_alu_dibond = models.DecimalField(decimal_places=2, max_digits=10, default=0, verbose_name="Price: Alu-Dibond")
     price_shadow_gap = models.DecimalField(decimal_places=2, max_digits=10, default=0, verbose_name="Price: Shadow Gap Frame")
+    recommend_shadow_gap = models.BooleanField(default=False, verbose_name="Show 'Recommended' badge?")
+    panels = [FieldPanel('size_name'), FieldRowPanel([FieldPanel('price_fine_art'), FieldPanel('price_alu_dibond'), FieldPanel('price_shadow_gap')]), FieldPanel('recommend_shadow_gap')]
+    def __str__(self): return f"{self.size_name}"
 
-    # Recommendation Logic
-    recommend_shadow_gap = models.BooleanField(default=False, verbose_name="Show 'Recommended' badge on this size when Shadow Gap is picked?")
+class HomePage(Page): template = "home/about.html"
+class PhotographyPage(Page): template = "home/photography.html"
 
-    panels = [
-        FieldPanel('size_name'),
-        FieldRowPanel([
-            FieldPanel('price_fine_art'), 
-            FieldPanel('price_alu_dibond'),
-            FieldPanel('price_shadow_gap')
-        ]),
-        FieldPanel('recommend_shadow_gap')
-    ]
-    def __str__(self):
-        return f"{self.size_name}"
-
-# --- 2. PAGES ---
-class HomePage(Page):
-    template = "home/about.html"
-
-class PhotographyPage(Page):
-    template = "home/photography.html"
-
-# -- New: Product Gallery Images (Extra slides) --
-class ProductGalleryImage(Orderable):
-    page = ParentalKey('ProductPage', related_name='gallery_images', on_delete=models.CASCADE)
+# Kept for compatibility, but we use Strategy 1 (Filename) now
+class ProductVariantImage(Orderable):
+    page = ParentalKey('ProductPage', related_name='variant_images', on_delete=models.CASCADE)
     image = models.ForeignKey("wagtailimages.Image", on_delete=models.CASCADE, related_name="+")
-    caption = models.CharField(blank=True, max_length=250)
-    panels = [FieldPanel('image'), FieldPanel('caption')]
+    panels = [FieldPanel('image')]
 
 class ProductPage(Page):
     template = "home/details.html"
-    
-    # Main Image (Fine Art Default)
-    product_image = models.ForeignKey("wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+", verbose_name="Main Image (Fine Art / Default)")
-    
-    # Variant Specific Images
-    image_fine_art_border = models.ForeignKey("wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="Image: Fine Art + White Border")
-    image_alu_dibond = models.ForeignKey("wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="Image: Alu-Composite")
-    image_shadow_gap = models.ForeignKey("wagtailimages.Image", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="Image: Shadow Gap Frame")
-
+    product_image = models.ForeignKey("wagtailimages.Image", null=True, blank=False, on_delete=models.SET_NULL, related_name="+", verbose_name="Main Image")
     orientation = models.CharField(max_length=20, choices=[('horizontal', 'Horizontal'), ('vertical', 'Vertical'), ('squared', 'Squared')], default='vertical')
     description_text = models.TextField(blank=True)
-    
-    # Checkbox to control default border state for 60x40
     default_border_large = models.BooleanField(default=True, verbose_name="Default 'Borders' checked for 60x40?")
 
     content_panels = Page.content_panels + [
-        MultiFieldPanel([
-            FieldPanel("product_image"),
-            FieldPanel("image_fine_art_border"),
-            FieldPanel("image_alu_dibond"),
-            FieldPanel("image_shadow_gap"),
-            FieldPanel("orientation"),
-            FieldPanel("default_border_large")
-        ], heading="Product Details"),
-        InlinePanel('gallery_images', label="Extra Gallery Images"),
+        MultiFieldPanel([FieldPanel("product_image"), FieldPanel("orientation"), FieldPanel("default_border_large")], heading="Product Details"),
+        InlinePanel('variant_images', label="Manual Variant Images (Optional)"),
         FieldPanel("description_text")
     ]
     parent_page_types = ['home.IndexShopPage']
@@ -86,9 +46,11 @@ class ProductPage(Page):
         context = super().get_context(request, *args, **kwargs)
         context['related_products'] = ProductPage.objects.live().exclude(pk=self.pk).order_by('?')[:3]
         context['all_variants'] = PrintSizePrice.objects.all().order_by('price_fine_art')
+        
+        # --- PASS INDICES 1-16 FOR AUTOMATION ---
+        context['variant_indices'] = range(1, 17)
         return context
 
-# --- 3. SHOP INDEX ---
 class FeaturedProduct(Orderable):
     page = ParentalKey('home.IndexShopPage', related_name='featured_products')
     product_to_link = models.ForeignKey('home.ProductPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
@@ -111,7 +73,6 @@ class IndexShopPage(Page):
         context['featured_slider_items'] = self.featured_products.all()
         return context
 
-# --- 5. CHECKOUT (Unchanged) ---
 class Order(models.Model):
     country = models.CharField(max_length=100, default='Austria')
     first_name = models.CharField(max_length=100)
@@ -136,9 +97,9 @@ class OrderItem(models.Model):
     finish = models.CharField(max_length=100, default='Fine Art Print')
     has_borders = models.BooleanField(default=False)
     framed = models.BooleanField(default=False) 
+    frame_color = models.CharField(max_length=50, blank=True, default='')
     def __str__(self): return f"{self.order.id} - {self.product.title}"
 
-# --- 6. CONTACT PAGE (Unchanged) ---
 class FormField(AbstractFormField):
     page = ParentalKey('ContactPage', on_delete=models.CASCADE, related_name='form_fields')
 
@@ -146,30 +107,13 @@ class ContactPage(AbstractEmailForm):
     template = "home/footer/contact.html"
     intro = RichTextField(blank=True)
     thank_you_text = RichTextField(blank=True)
-    content_panels = AbstractEmailForm.content_panels + [
-        FieldPanel('intro'),
-        InlinePanel('form_fields', label="Form fields"),
-        FieldPanel('thank_you_text'),
-        MultiFieldPanel([
-            FieldPanel('from_address'),
-            FieldPanel('to_address'),
-            FieldPanel('subject'),
-        ], "Email Settings"),
-    ]
-
+    content_panels = AbstractEmailForm.content_panels + [FieldPanel('intro'), InlinePanel('form_fields', label="Form fields"), FieldPanel('thank_you_text'), MultiFieldPanel([FieldPanel('from_address'), FieldPanel('to_address'), FieldPanel('subject')], "Email Settings")]
     def process_form_submission(self, form):
         submission = super().process_form_submission(form)
         try:
             user_email = form.cleaned_data.get('email')
             user_name = form.cleaned_data.get('name', 'Besucher')
             if user_email:
-                send_mail(
-                    subject="Eingangsbestätigung: Deine Nachricht an Cumulophib",
-                    message=f"Hallo {user_name},\n\ndanke für deine Nachricht! Ich habe sie erhalten und melde mich so schnell wie möglich bei dir.\n\nBeste Grüße,\nPhilip",
-                    from_email='pheinrich210@gmail.com',
-                    recipient_list=[user_email],
-                    fail_silently=True
-                )
-        except Exception as e:
-            print(f"MAIL ERROR: {e}", flush=True)
+                send_mail(subject="Eingangsbestätigung", message=f"Hallo {user_name},\n\nDanke!", from_email='pheinrich210@gmail.com', recipient_list=[user_email], fail_silently=True)
+        except Exception as e: print(f"MAIL ERROR: {e}", flush=True)
         return submission

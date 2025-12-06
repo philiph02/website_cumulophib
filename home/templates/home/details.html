@@ -1,128 +1,102 @@
 {% extends "base.html" %}
-{% load static wagtailcore_tags wagtailimages_tags l10n %}
+{% load static wagtailcore_tags wagtailimages_tags l10n shop_tags %}
 
 {% block extra_head %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
     <link rel="stylesheet" href="{% static 'home/assets_shop/css/swiper-bundle.min.css' %}">
-    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}?v=1.7.0">
+    <link rel="stylesheet" href="{% static 'home/assets_shop/css/style.css' %}?v=18.0.0">
     <link rel="stylesheet" href="{% static 'home/assets_shop/css/colors/color-1.css' %}">
 
     <style>
-    /* --- SIZE SELECTION (2 Boxes) --- */
-    .option-toggle {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem; 
-      max-width: 100%;
-      margin-bottom: 1.5rem; 
-      padding: 8px 0;
+    /* --- 1. LAYOUT STABILITY FIX (The "No Zoom" CSS) --- */
+    .product__images, .product-slider, .swiper-slide {
+        width: 100%;
+        /* Enforce a standard aspect ratio (3:2) to reserve space before image loads */
+        aspect-ratio: 3 / 2; 
+        overflow: hidden;
+        border-radius: 8px;
     }
-    .opt-size {
-      position: relative; 
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      border: 2px solid var(--scroll-bar-color);
-      border-radius: .5rem;
-      padding: 1rem;
-      cursor: pointer;
-      background: var(--container-color);
-      color: var(--text-color);
-      transition: all 0.2s ease;
-      font-weight: 500;
+    .product-slider img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Ensures image fills the box */
+        display: block;
+    }
+
+    /* --- 2. SAFELY HIDE INPUTS (The "No Zoom" Method) --- */
+    .opt-size input, .opt-finish input, .color-opt input, .checkbox-container input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none; /* KEY: Prevents browser form focus */
+        width: 0;
+        height: 0;
+        margin: 0;
+        appearance: none;
+    }
+
+    /* --- SLIDER CONTROLS --- */
+    .swiper-button-next, .swiper-button-prev {
+        color: var(--first-color); 
+        transform: scale(0.7);
+        font-weight: bold;
+    }
+    .swiper-pagination-bullet-active { background: var(--first-color) !important; }
+
+    /* --- SELECTION BOXES --- */
+    .option-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; padding: 8px 0; }
+    .opt-size { 
+        display: flex; align-items: center; justify-content: center; text-align: center; 
+        border: 2px solid var(--scroll-bar-color); border-radius: .5rem; padding: 1rem; 
+        cursor: pointer; background: var(--container-color); color: var(--text-color); 
+        transition: all 0.2s ease; font-weight: 500; position: relative; 
     }
     .opt-size:hover { border-color: var(--text-color); }
-    .opt-size.is-active {
-      background: #575757; color: #fff; border-color: #575757;
-    }
-    .opt-size input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .opt-size.is-active { background: #575757; color: #fff; border-color: #575757; }
 
-    /* --- FINISH SELECTION (One Single Split Box) --- */
-    .finish-box {
-        display: flex;
-        flex-direction: column;
-        border: 2px solid var(--scroll-bar-color);
-        border-radius: .5rem;
-        overflow: hidden; 
-        margin-bottom: 1.5rem;
-        background-color: var(--container-color);
-    }
-
-    .opt-finish {
-        position: relative;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1.2rem 1rem;
-        cursor: pointer;
-        border-bottom: 1px solid var(--scroll-bar-color); 
-        color: var(--text-color);
-        transition: background 0.2s ease;
-        font-weight: 400;
+    /* --- FINISH --- */
+    .finish-box { display: flex; flex-direction: column; border: 2px solid var(--scroll-bar-color); border-radius: .5rem; overflow: hidden; margin-bottom: 1.5rem; background-color: var(--container-color); }
+    .opt-finish { 
+        display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1rem; 
+        cursor: pointer; border-bottom: 1px solid var(--scroll-bar-color); color: var(--text-color); 
+        transition: background 0.2s ease; font-weight: 400; position: relative; 
     }
     .opt-finish:last-child { border-bottom: none; }
     .opt-finish:hover { background-color: var(--body-color); }
     .opt-finish.is-active { background: #575757; color: #fff; }
     .finish-text { font-size: var(--normal-font-size); }
-    .opt-finish input { position: absolute; opacity: 0; }
 
-    /* --- CHECKBOX (Borders) --- */
-    .checkbox-container {
-        display: flex;
-        align-items: center;
-        margin-top: 1rem;
-        cursor: pointer;
-        user-select: none;
+    /* --- COLOR --- */
+    .color-selector-container { margin-bottom: 1.5rem; display: none; }
+    .color-label { display: block; margin-bottom: 0.5rem; font-size: var(--small-font-size); color: var(--text-color-light); }
+    .color-options { display: flex; gap: 1rem; }
+    .color-opt { 
+        display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem 1rem; 
+        border: 1px solid var(--scroll-bar-color); border-radius: 0.5rem; font-size: var(--small-font-size); 
+        transition: .2s; position: relative;
     }
-    .checkbox-container input {
-        width: 1.5rem; height: 1.5rem; margin-right: 0.75rem; 
-        accent-color: var(--first-color); cursor: pointer;
+    .color-opt:hover { border-color: var(--text-color); }
+    .color-opt.is-active { border-color: var(--title-color); background: var(--body-color); font-weight: 600; }
+    .color-circle { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #ddd; }
+
+    /* --- BORDERS --- */
+    .checkbox-container { display: flex; align-items: center; margin-top: 1rem; cursor: pointer; user-select: none; }
+    .checkbox-visual {
+        width: 1.3rem; height: 1.3rem; border: 2px solid var(--text-color); border-radius: 4px;
+        margin-right: 0.75rem; display: flex; align-items: center; justify-content: center; transition: 0.2s;
     }
-    .checkbox-label { font-size: var(--normal-font-size); color: var(--title-color); }
+    .checkbox-visual i { display: none; color: white; font-size: 0.9rem; }
+    
+    /* Logic: Checkbox visual state */
+    .checkbox-container input:checked + .checkbox-visual { background: var(--first-color); border-color: var(--first-color); }
+    .checkbox-container input:checked + .checkbox-visual i { display: block; }
 
     /* --- BADGES --- */
-    .shipping-badge {
-        position: absolute; top: -8px; right: -8px;
-        background: #e74c3c; border: 1px solid #e74c3c;
-        color: white; font-size: 0.55rem; font-weight: 600;
-        padding: 0.15rem 0.35rem; border-radius: 0.2rem;
-        text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 10;
-    }
-    .recommended-badge {
-        position: absolute; top: -8px; left: -8px; 
-        background: #f39c12; border: 1px solid #f39c12;
-        color: white; font-size: 0.55rem; font-weight: 600;
-        padding: 0.15rem 0.35rem; border-radius: 0.2rem;
-        text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 10;
-        display: none; 
-    }
-
-    /* --- PRODUCT SLIDER CSS --- */
-    .product-slider {
-        width: 100%;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    .product-slider .swiper-slide {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .product-slider img {
-        width: 100%;
-        height: auto;
-        border-radius: 8px;
-        display: block;
-    }
-    .swiper-pagination-bullet-active {
-        background: var(--first-color) !important;
-    }
+    .shipping-badge { position: absolute; top: -8px; right: -8px; background: #e74c3c; border: 1px solid #e74c3c; color: white; font-size: 0.55rem; font-weight: 600; padding: 0.15rem 0.35rem; border-radius: 0.2rem; text-transform: uppercase; z-index: 10; }
+    .recommended-badge { position: absolute; top: -8px; left: -8px; background: #f39c12; border: 1px solid #f39c12; color: white; font-size: 0.55rem; font-weight: 600; padding: 0.15rem 0.35rem; border-radius: 0.2rem; text-transform: uppercase; z-index: 10; display: none; }
     </style>
 {% endblock %}
 
 {% block content %}
-
 <main class="main">
     <section class="details section container">
         <h2 class="breadcrumb__title">Details Page</h2>
@@ -133,70 +107,34 @@
             <div class="product__images">
                 <div class="swiper product-slider">
                     <div class="swiper-wrapper">
-                        
-                        {# 1. Default / Fine Art (No Border) #}
-                        {% if page.product_image %}
-                        <div class="swiper-slide" data-variant="fine_art">
-                            {% image page.product_image width-1200 alt=page.title %}
+                        <div class="swiper-slide">
+                            {% if page.product_image %}
+                                {% image page.product_image width-1200 format-webp %}
+                            {% endif %}
                         </div>
-                        {% endif %}
-
-                        {# 2. Fine Art (With Border) #}
-                        {% if page.image_fine_art_border %}
-                        <div class="swiper-slide" data-variant="fine_art_border">
-                            {% image page.image_fine_art_border width-1200 alt="Fine Art with Border" %}
+                        <div class="swiper-slide">
+                            {% if page.product_image %}
+                                {% image page.product_image width-1200 format-webp id="dynamic-variant-img" %}
+                            {% endif %}
                         </div>
-                        {% endif %}
-
-                        {# 3. Alu Dibond #}
-                        {% if page.image_alu_dibond %}
-                        <div class="swiper-slide" data-variant="alu_dibond">
-                            {% image page.image_alu_dibond width-1200 alt="Alu-Composite" %}
-                        </div>
-                        {% endif %}
-
-                        {# 4. Shadow Gap #}
-                        {% if page.image_shadow_gap %}
-                        <div class="swiper-slide" data-variant="shadow_gap">
-                            {% image page.image_shadow_gap width-1200 alt="Shadow Gap Frame" %}
-                        </div>
-                        {% endif %}
-
-                        {# 5. Extra Gallery Images #}
-                        {% for item in page.gallery_images.all %}
-                        <div class="swiper-slide" data-variant="gallery">
-                            {% image item.image width-1200 alt=item.caption %}
-                        </div>
-                        {% endfor %}
-
                     </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
                     <div class="swiper-pagination"></div>
                 </div>
             </div>
 
             <div class="product__info">
-                {% if page.orientation %}
-                    <p class="details__subtitle">{{ page.orientation | title }}</p>
-                {% endif %}
-                
+                {% if page.orientation %}<p class="details__subtitle">{{ page.orientation | title }}</p>{% endif %}
                 <h3 class="details__title">{{ page.title }}</h3>
 
                 <div class="details__prices">
                     <span class="details__price" id="product-price">--.-- €</span>
-                    <span id="free-shipping-text" style="display: none; color: #e74c3c; font-size: var(--small-font-size); font-weight: var(--font-medium); margin-left: 1rem; background: rgba(231, 76, 60, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">
-                        Free Shipping
-                    </span>
+                    <span id="free-shipping-text" style="display: none; color: #e74c3c; margin-left: 1rem; font-size: var(--small-font-size);">Free Shipping</span>
                 </div>
 
                 <div class="details__description" style="margin-top: var(--mb-2);">
-                    <p style="margin-bottom: 1rem; font-size: var(--small-font-size); color: var(--text-color);">
-                        Produced on the finest photo paper, each print captures every detail with stunning clarity. 
-                        Choose between 60x40 cm and 45x30 cm formats, available with optional 
-                        Alu-Composite mounting or Shadow Gap frames.
-                    </p>
-                    <div class="simple-description">
-                        {{ page.description_text | linebreaks }}
-                    </div>
+                    <p>{{ page.description_text | linebreaks }}</p>
                 </div>
 
                 <form action="{% url 'add_to_cart' product_id=page.id %}" method="POST" id="add-to-cart-form">
@@ -204,141 +142,134 @@
                     
                     {% with all_variants as variants %}
                         {% if variants %}
-                            <div class="option-toggle" role="group" aria-label="Größe">
+                            <div class="option-toggle" role="group">
                                 {% for variant in variants %}
                                 <label class="opt-size {% if forloop.first %}is-active{% endif %}" id="size-label-{{ variant.id }}">
                                     <input type="radio" name="size_variant" value="{{ variant.id }}" {% if forloop.first %}checked{% endif %}>
                                     <span>{{ variant.size_name }}</span>
-                                    {% if "60x40" in variant.size_name %}
-                                        <div class="shipping-badge">Free Shipping</div>
-                                    {% endif %}
+                                    {% if "60x40" in variant.size_name %}<div class="shipping-badge">Free Shipping</div>{% endif %}
                                     <div class="recommended-badge" id="rec-badge-{{ variant.id }}">Recommended</div>
                                 </label>
                                 {% endfor %}
                             </div>
                             
-                            <div class="finish-box" role="group" aria-label="Finish">
+                            <div class="finish-box" role="group">
                                 <label class="opt-finish is-active">
                                     <input type="radio" name="finish_variant" value="fine_art" checked>
                                     <span class="finish-text" id="text-fine">Fine Art Print</span>
                                 </label>
                                 <label class="opt-finish">
                                     <input type="radio" name="finish_variant" value="alu_dibond">
-                                    <span class="finish-text" id="text-alu">Alu-Composite Frameless</span>
+                                    <span class="finish-text" id="text-alu">Metal Print (Alu-Dibond)</span>
                                 </label>
                                 <label class="opt-finish">
                                     <input type="radio" name="finish_variant" value="shadow_gap">
-                                    <span class="finish-text" id="text-shadow">Alu-Composite + Shadow Gap Frame</span>
+                                    <span class="finish-text" id="text-shadow">Metal Print + Floating Frame</span>
                                 </label>
+                            </div>
+
+                            <div class="color-selector-container" id="frame-color-box">
+                                <span class="color-label">Frame Color:</span>
+                                <div class="color-options">
+                                    <label class="color-opt is-active">
+                                        <input type="radio" name="frame_color" value="White" checked>
+                                        <div class="color-circle" style="background:#fff;"></div> White
+                                    </label>
+                                    <label class="color-opt">
+                                        <input type="radio" name="frame_color" value="Black">
+                                        <div class="color-circle" style="background:#000;"></div> Black
+                                    </label>
+                                    <label class="color-opt">
+                                        <input type="radio" name="frame_color" value="Ash">
+                                        <div class="color-circle" style="background:#ddc49e;"></div> Ash
+                                    </label>
+                                </div>
                             </div>
 
                             <label class="checkbox-container">
                                 <input type="checkbox" name="add_borders" id="borders-checkbox" value="true">
-                                <span class="checkbox-label">Add White Borders</span>
+                                <div class="checkbox-visual"><i class='bx bx-check'></i></div>
+                                <span>Add White Borders</span>
                             </label>
-                        
+
                         {% else %}
-                            <p>Dieses Produkt ist derzeit nicht verfügbar.</p>
+                            <p>Not available.</p>
                         {% endif %}
                     {% endwith %}
-
-                    <button type="submit" class="button" id="add-to-cart-btn" style="width: 100%; margin-top: var(--mb-1-5);">Add To Cart</button>
+                    <button type="submit" class="button" id="add-to-cart-btn" style="width: 100%; margin-top: 1.5rem;">Add To Cart</button>
                 </form>
-
             </div>
         </div>
     </section>
-
+    
     <section class="related__products section">
         <h2 class="section__title">Related Products</h2>
-        <div class="new__container container">
-            <div class="swiper new-swiper">
-                <div class="swiper-wrapper">
-                    {% for product in related_products %}
-                    <div class="shop__content swiper-slide">
-                        <a href="{% pageurl product %}" class="related-product__main-link">
-                            {% if product.product_image %}
-                                {% image product.product_image width-300 alt=product.title class="shop__img" %}
-                            {% endif %}
-                            <h3 class="shop__title">{{ product.title }}</h3>
-                        </a>
-                        <div class="shop__prices">
-                            {% with all_variants|first as first_variant %}
-                                {% if first_variant %}
-                                    <span class="shop__price">From {{ first_variant.price_fine_art|default:"0.00"|unlocalize }} €</span>
-                                {% endif %}
-                            {% endwith %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
+        <div class="new__container container"><div class="swiper new-swiper"><div class="swiper-wrapper">
+            {% for product in related_products %}
+            <div class="shop__content swiper-slide">
+                <a href="{% pageurl product %}" class="related-product__main-link">
+                    {% if product.product_image %}{% image product.product_image width-300 alt=product.title class="shop__img" %}{% endif %}
+                    <h3 class="shop__title">{{ product.title }}</h3>
+                </a>
+                <div class="shop__prices"><span class="shop__price">From {{ all_variants.first.price_fine_art|default:"0" }} €</span></div>
             </div>
-        </div>
+            {% endfor %}
+        </div></div></div>
     </section>
 </main>
 
-<footer class="footer section">
-    <div class="footer__container container grid">
-        <div class="footer__content">
-            <a href="#" class="footer__logo">
-                    <img src="{% static 'home/assets/images/logo_cumulophib.png' %}" alt="Logo" style="height: 2.5em; vertical-align: middle; margin-right: 0.5em;">
-            </a>
-            <p class="footer__description"> Danke! </p>
-            <div class="footer__social">
-                <a href="https://www.instagram.com/cumulophib/" class="footer__social-link"><i class="bx bxl-instagram-alt"></i></a>
-            </div>
-        </div>
-    </div>
-    <span class="footer__copy">&#169; Crypticalcoder. All rights reserved</span>
-</footer>
-
 <a href="#" class="scrollup" id="scroll-up"><i class="bx bx-up-arrow-alt scrollup__icon"></i></a>
-
 <script src="{% static 'home/assets_shop/js/swiper-bundle.min.js' %}"></script>
 <script src="{% static 'home/assets_shop/js/main.js' %}"></script>
-
 {% endblock %}
 
 {% block extra_js %}
     {{ block.super }}
-
     <script>
+    // --- 1. AUTOMATIC IMAGE PRELOADER (Strategy 1: Indices 1-16) ---
+    // This pre-fetches URLs for "cumulophib-ID-1.jpg" up to "cumulophib-ID-16.jpg"
+    const variantImageMap = {};
+    
+    {% if variant_indices %}
+        {% for idx in variant_indices %}
+            {% get_variant_image page.id idx as v_img %}
+            {% if v_img %}
+                {% image v_img width-1200 format-webp as v_tmp %}
+                variantImageMap[{{ idx }}] = "{{ v_tmp.url }}";
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    // --- 2. HELPERS (Visual Toggles) ---
     (function() {
-        const sizeBox = document.querySelector('.option-toggle');
-        if(sizeBox) {
-            sizeBox.querySelectorAll('input').forEach(input => {
-                input.addEventListener('change', function() {
-                    sizeBox.querySelectorAll('.opt-size').forEach(l => l.classList.remove('is-active'));
-                    if(this.checked) this.parentElement.classList.add('is-active');
+        function setupGroup(selector, itemClass) {
+            const container = document.querySelector(selector);
+            if(container) {
+                container.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('change', function() {
+                        container.querySelectorAll(itemClass).forEach(l => l.classList.remove('is-active'));
+                        if(this.checked) this.parentElement.classList.add('is-active');
+                    });
                 });
-            });
+            }
         }
-        const finishBox = document.querySelector('.finish-box');
-        if(finishBox) {
-            finishBox.querySelectorAll('input').forEach(input => {
-                input.addEventListener('change', function() {
-                    finishBox.querySelectorAll('.opt-finish').forEach(l => l.classList.remove('is-active'));
-                    if(this.checked) this.parentElement.classList.add('is-active');
-                });
-            });
-        }
+        setupGroup('.option-toggle', '.opt-size');
+        setupGroup('.finish-box', '.opt-finish');
+        setupGroup('.color-options', '.color-opt');
     })();
-    </script>
 
-    <script>
+    // --- 3. MAIN LOGIC ---
     document.addEventListener('DOMContentLoaded', function() {
         
-        // --- 1. INITIALIZE SLIDER ---
-        const productSwiper = new Swiper('.product-slider', {
-            spaceBetween: 16,
-            slidesPerView: 1,
-            pagination: {
-                el: '.swiper-pagination',
-                clickable: true,
-            },
+        const productSwiper = new Swiper('.product-slider', { 
+            spaceBetween: 16, 
+            slidesPerView: 1, 
+            pagination: { el: '.swiper-pagination', clickable: true },
+            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+            autoHeight: false 
         });
 
-        // --- 2. PRICING DATA ---
+        // Price Data
         const priceData = {
         {% for variant in all_variants %}
             '{{ variant.id }}': {
@@ -352,136 +283,147 @@
         };
 
         const defaultBorderLarge = {{ page.default_border_large|yesno:"true,false" }};
+        const defaultImgUrl = "{% if page.product_image %}{% image page.product_image width-1200 format-webp as img %}{{ img.url }}{% endif %}";
 
         const priceDisplay = document.getElementById('product-price');
         const shippingText = document.getElementById('free-shipping-text');
-        const sizeRadios = document.querySelectorAll('input[name="size_variant"]');
-        const finishRadios = document.querySelectorAll('input[name="finish_variant"]');
         const borderCheckbox = document.getElementById('borders-checkbox');
+        const colorBox = document.getElementById('frame-color-box');
+        const dynamicImg = document.getElementById('dynamic-variant-img');
 
-        const textFine = document.getElementById('text-fine');
-        const textAlu = document.getElementById('text-alu');
-        const textShadow = document.getElementById('text-shadow');
+        // --- CALCULATE INDEX (Your Logic) ---
+        function calculateVariantIndex(sizeName, finish, color, hasBorders) {
+            const isLarge = sizeName.toUpperCase().includes("60X40");
+            let index = null;
 
-        // --- Helper to find slide index by variant name ---
-        function slideToVariant(variantName) {
-            if(!productSwiper || !productSwiper.slides) return;
-            const slides = productSwiper.slides;
-            for (let i = 0; i < slides.length; i++) {
-                if (slides[i].getAttribute('data-variant') === variantName) {
-                    productSwiper.slideTo(i);
-                    return;
-                }
-            }
-            // Fallback: if "fine_art_border" requested but doesn't exist, try "fine_art"
-            if (variantName === 'fine_art_border') slideToVariant('fine_art');
-        }
-
-        function updatePrice() {
-            try {
-                const selectedSizeInput = document.querySelector('input[name="size_variant"]:checked');
-                const selectedFinishInput = document.querySelector('input[name="finish_variant"]:checked');
-
-                if(!selectedSizeInput || !selectedFinishInput) return;
-
-                const variantData = priceData[selectedSizeInput.value];
-                if (!variantData) return;
-
-                const finishVal = selectedFinishInput.value;
-                
-                // --- 1. Identify Current Price ---
-                let currentPrice = 0;
-                if (finishVal === 'alu_dibond') currentPrice = variantData.p_alu;
-                else if (finishVal === 'shadow_gap') currentPrice = variantData.p_shadow;
-                else currentPrice = variantData.p_fine;
-                
-                if(priceDisplay) priceDisplay.textContent = currentPrice.toFixed(2) + ' €';
-
-                // --- 2. Calculate Diffs ---
-                const diffFine = variantData.p_fine - currentPrice;
-                const diffAlu = variantData.p_alu - currentPrice;
-                const diffShadow = variantData.p_shadow - currentPrice;
-
-                const fmt = (val) => {
-                    if(val === 0) return "";
-                    const sign = val > 0 ? "+" : ""; 
-                    return ` (${sign}${val.toFixed(2)}€)`;
-                }
-
-                if(textFine) textFine.textContent = `Fine Art Print${fmt(diffFine)}`;
-                if(textAlu) textAlu.textContent = `Alu-Composite Frameless${fmt(diffAlu)}`;
-                if(textShadow) textShadow.textContent = `Alu-Composite + Shadow Gap Frame${fmt(diffShadow)}`;
-
-                // --- 3. Shipping Text Logic ---
-                const isLarge = variantData.name.toUpperCase().includes("60X40"); 
-                const isShadow = (finishVal === 'shadow_gap');
-
-                if(shippingText) {
-                    if (isLarge || isShadow) shippingText.style.display = 'inline-block';
-                    else shippingText.style.display = 'none';
-                }
-
-                // --- 4. Recommended Badge Logic ---
-                document.querySelectorAll('.recommended-badge').forEach(el => el.style.display = 'none');
-                if (variantData.recommend_shadow && isShadow) {
-                    const badge = document.getElementById(`rec-badge-${selectedSizeInput.value}`);
-                    if(badge) badge.style.display = 'block';
-                }
-
-                // --- 5. SLIDER LOGIC (The "Coupling") ---
-                // Determine which image to show based on selection
-                let targetVariant = 'fine_art'; // Default
-
-                if (finishVal === 'alu_dibond') {
-                    targetVariant = 'alu_dibond';
-                } else if (finishVal === 'shadow_gap') {
-                    targetVariant = 'shadow_gap';
-                } else {
-                    // It is Fine Art. Check borders
-                    if (borderCheckbox && borderCheckbox.checked) {
-                        targetVariant = 'fine_art_border';
+            if (finish === 'shadow_gap') {
+                // Floating Frame
+                if (isLarge) {
+                    // 60x40
+                    if (!hasBorders) {
+                        // 1-3: No Border (White=1, Black=2, Ash=3)
+                        if (color === 'White') index = 1;
+                        if (color === 'Black') index = 2;
+                        if (color === 'Ash') index = 3;
                     } else {
-                        targetVariant = 'fine_art';
+                        // 4-6: With Border (Ash=4, Black=5, White=6)
+                        if (color === 'Ash') index = 4;
+                        if (color === 'Black') index = 5;
+                        if (color === 'White') index = 6;
+                    }
+                } else {
+                    // 45x30
+                    if (hasBorders) {
+                        // 7-9: With Border (White=7, Black=8, Ash=9)
+                        if (color === 'White') index = 7;
+                        if (color === 'Black') index = 8;
+                        if (color === 'Ash') index = 9;
+                    } else {
+                        // 10-12: No Border (Ash=10, Black=11, White=12)
+                        if (color === 'Ash') index = 10;
+                        if (color === 'Black') index = 11;
+                        if (color === 'White') index = 12;
                     }
                 }
-                
-                // Only slide if we have a valid target. 
-                // We use a small flag to prevent this running on page load if desired, 
-                // but usually syncing on load is good.
-                slideToVariant(targetVariant);
-
-            } catch (e) { console.log("Update error:", e.message); }
+            } else {
+                // No Frame (Fine Art / Metal) -> Indices 13-16
+                if (isLarge) {
+                    if (!hasBorders) index = 13;
+                    else index = 14;
+                } else {
+                    if (hasBorders) index = 15;
+                    else index = 16;
+                }
+            }
+            return index;
         }
 
-        // --- Handle Size Change ---
-        let previousSize = "";
-        function handleSizeChange() {
-            const selectedSizeInput = document.querySelector('input[name="size_variant"]:checked');
-            if(!selectedSizeInput) return;
+        // --- UPDATE ---
+        function updateState(event) {
+            const sizeInput = document.querySelector('input[name="size_variant"]:checked');
+            const finishInput = document.querySelector('input[name="finish_variant"]:checked');
+            const colorInput = document.querySelector('input[name="frame_color"]:checked');
+            const borderInput = document.querySelector('input[name="add_borders"]');
+
+            if(!sizeInput || !finishInput) return;
             
-            const variantData = priceData[selectedSizeInput.value];
+            const variantData = priceData[sizeInput.value];
             if(!variantData) return;
 
-            const isLarge = variantData.name.toUpperCase().includes("60X40");
+            const sizeName = variantData.name;
+            const finish = finishInput.value;
+            const color = colorInput ? colorInput.value : 'White';
+            const borders = borderInput.checked;
+            
+            // 1. Price
+            let currentPrice = 0;
+            if (finish === 'alu_dibond') currentPrice = variantData.p_alu;
+            else if (finish === 'shadow_gap') currentPrice = variantData.p_shadow;
+            else currentPrice = variantData.p_fine;
+            priceDisplay.textContent = currentPrice.toFixed(2) + ' €';
 
-            if (selectedSizeInput.value !== previousSize) {
-                if (isLarge) {
-                    if(borderCheckbox) borderCheckbox.checked = defaultBorderLarge;
-                } else {
-                    if(borderCheckbox) borderCheckbox.checked = false; 
-                }
-                previousSize = selectedSizeInput.value;
+            // 2. Labels
+            const diffFine = variantData.p_fine - currentPrice;
+            const diffAlu = variantData.p_alu - currentPrice;
+            const diffShadow = variantData.p_shadow - currentPrice;
+            const fmt = (v) => v === 0 ? "" : ` (${v > 0 ? "+" : ""}${v.toFixed(2)}€)`;
+
+            document.getElementById('text-fine').textContent = `Fine Art Print${fmt(diffFine)}`;
+            document.getElementById('text-alu').textContent = `Metal Print (Alu-Dibond)${fmt(diffAlu)}`;
+            document.getElementById('text-shadow').textContent = `Metal Print + Floating Frame${fmt(diffShadow)}`;
+
+            // 3. Visibility
+            colorBox.style.display = (finish === 'shadow_gap') ? 'block' : 'none';
+            const isLarge = sizeName.toUpperCase().includes("60X40");
+            const isShadow = (finish === 'shadow_gap');
+            if(shippingText) shippingText.style.display = (isLarge || isShadow) ? 'inline-block' : 'none';
+
+            document.querySelectorAll('.recommended-badge').forEach(el => el.style.display = 'none');
+            if (variantData.recommend_shadow && isShadow) {
+                const badge = document.getElementById(`rec-badge-${sizeInput.value}`);
+                if(badge) badge.style.display = 'block';
             }
-            updatePrice();
+
+            // 4. IMAGE (Strategy 1: Index Lookup)
+            const idx = calculateVariantIndex(sizeName, finish, color, borders);
+            const newUrl = variantImageMap[idx];
+            
+            if (newUrl) {
+                if(dynamicImg) dynamicImg.src = newUrl;
+                // Only slide if user clicked
+                if (event && event.type === 'change' && productSwiper) {
+                    productSwiper.slideTo(1); 
+                }
+            } else {
+                if(dynamicImg) dynamicImg.src = defaultImgUrl;
+            }
         }
 
-        // Add Listeners
-        sizeRadios.forEach(r => r.addEventListener('change', handleSizeChange));
-        finishRadios.forEach(r => r.addEventListener('change', updatePrice)); // Finish change triggers slider
-        if(borderCheckbox) borderCheckbox.addEventListener('change', updatePrice); // Border toggle triggers slider
+        let previousSize = "";
+        function handleSizeChange(e) {
+            const sizeInput = document.querySelector('input[name="size_variant"]:checked');
+            if(!sizeInput) return;
+            
+            const variantData = priceData[sizeInput.value];
+            const isLarge = variantData.name.toUpperCase().includes("60X40");
 
-        // Initial Run
-        setTimeout(handleSizeChange, 50);
+            if (sizeInput.value !== previousSize) {
+                if (previousSize !== "") {
+                    if (isLarge) borderCheckbox.checked = defaultBorderLarge;
+                    else borderCheckbox.checked = false; 
+                }
+                previousSize = sizeInput.value;
+            }
+            updateState(e);
+        }
+
+        document.querySelectorAll('input').forEach(i => i.addEventListener('change', updateState));
+        document.querySelectorAll('input[name="size_variant"]').forEach(i => i.addEventListener('change', handleSizeChange));
+
+        // Init
+        const initialSize = document.querySelector('input[name="size_variant"]:checked');
+        if(initialSize) previousSize = initialSize.value;
+        updateState(null);
     });
     </script>
 {% endblock %}
